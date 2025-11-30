@@ -81,6 +81,9 @@ services:
       - MCP_EDGAR_URL=http://sec-edgar-mcp:8000/mcp
       - MCP_YFINANCE_URL=http://yahoo-finance-mcp:8000/mcp
       - MCP_SANDBOX_URL=http://mcp-sandbox:8000/mcp
+      - MCP_EDGAR_URL=http://sec-edgar-mcp:8000/mcp
+      - MCP_YFINANCE_URL=http://yahoo-finance-mcp:8000/mcp
+      - MCP_SANDBOX_URL=http://mcp-sandbox:8000/mcp
       - A2A_PROTOCOL_VERSION=1.0
       - LLM_PROVIDER=${LLM_PROVIDER:-openai}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
@@ -96,6 +99,8 @@ services:
       - "8080:8080"
     volumes:
       - evaluation-results:/data/results
+      - ./finance-agent/data:/app/data:ro
+      - ./scripts:/app/scripts:ro
     restart: unless-stopped
 
   # Purple Agent (Finance Analysis Agent under test)
@@ -113,7 +118,7 @@ services:
       - MCP_YFINANCE_URL=http://yahoo-finance-mcp:8000/mcp
       - MCP_SANDBOX_URL=http://mcp-sandbox:8000/mcp
     ports:
-      - "8001:8001"
+      - "8010:8001"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:8001/health"]
       interval: 30s
