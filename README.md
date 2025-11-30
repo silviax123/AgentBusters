@@ -112,6 +112,12 @@ MCP servers build from `src/mcp_servers/*.py` using the provided Dockerfiles.
 ### Build images (once)
 ```bash
 docker compose build
+# After code changes, rebuild without cache to pick up source edits:
+docker compose build --no-cache
+# Build specific services (common set):
+# docker compose build sec-edgar-mcp yahoo-finance-mcp mcp-sandbox purple-agent cio-agent
+# Without cache:
+# docker compose build --no-cache sec-edgar-mcp yahoo-finance-mcp mcp-sandbox purple-agent cio-agent
 ```
 
 ### Start MCP + Purple (background)
@@ -120,17 +126,15 @@ docker compose up -d
 ```
 External ports (default compose): Purple `8010->8001`, EDGAR `8001->8000`, YFinance `8002->8000`, Sandbox `8003->8000`.
 
+Check the status
+```bash
+docker ps --filter "name=fab-plus"
+```
+
 ### One-shot CSV batch run (headless)
 Calls Purple `/analyze`; remove `--purple-endpoint` to use mock agent.
 ```bash
-docker compose run --rm --user root cio-agent \
-  sh -c "python -m scripts.run_csv_eval \
-    --dataset-path /app/data/public.csv \
-    --simulation-date 2024-12-31 \
-    --difficulty medium \
-    --output /data/results/summary.json \
-    --purple-endpoint http://fab-plus-purple-agent:8001 \
-    && cat /data/results/summary.json"
+docker compose run --rm --user root cio-agent sh -c "python -m scripts.run_csv_eval --dataset-path /app/data/public.csv --simulation-date 2024-12-31 --difficulty medium --output /data/results/summary.json --purple-endpoint http://fab-plus-purple-agent:8001 && cat /data/results/summary.json"
 ```
 
 Persist results to host:

@@ -23,7 +23,7 @@ import httpx
 
 from cio_agent.datasets.csv_provider import CsvFinanceDatasetProvider
 from cio_agent.evaluator import ComprehensiveEvaluator
-from cio_agent.models import AgentResponse, FinancialData, TaskDifficulty
+from cio_agent.models import AgentResponse, FinancialData, TaskDifficulty, DebateRebuttal
 from cio_agent.orchestrator import MockAgentClient
 from cio_agent.task_generator import DynamicTaskGenerator
 
@@ -31,21 +31,26 @@ from cio_agent.task_generator import DynamicTaskGenerator
 class PurpleDirectClient:
     """Minimal client hitting Purple Agent /analyze (non-A2A JSON POST)."""
 
-    def __init__(self, endpoint: str, agent_id: str = "purple-agent-client", timeout: int = 120):
+    def __init__(self, endpoint: str, agent_id: str = "purple-agent-client", model: str = "purple-direct", timeout: int = 120):
         self.endpoint = endpoint.rstrip("/")
         self.agent_id = agent_id
+        self.model = model
         self.timeout = timeout
 
-    async def process_task(self, task) -> AgentResponse:
+    async def _post_analyze(self, question: str, ticker: str | None = None) -> dict[str, Any]:
         url = f"{self.endpoint}/analyze"
-        payload = {"question": task.question, "ticker": task.ticker}
+        payload = {"question": question}
+        if ticker:
+            payload["ticker"] = ticker
         async with httpx.AsyncClient(timeout=self.timeout) as client:
             resp = await client.post(url, json=payload)
             resp.raise_for_status()
-            data = resp.json()
+            return resp.json()
 
+    async def process_task(self, task) -> AgentResponse:
+        data = await self._post_analyze(task.question, task.ticker)
         analysis = data.get("analysis") or json.dumps(data)
-        recommendation = analysis[:500]
+        recommendation = data.get("recommendation") or analysis[:500]
 
         return AgentResponse(
             agent_id=self.agent_id,
@@ -55,6 +60,20 @@ class PurpleDirectClient:
             extracted_financials=FinancialData(),
             tool_calls=[],
             code_executions=[],
+        )
+
+    async def process_challenge(self, task_id: str, challenge: str, original_response: AgentResponse) -> AgentResponse:
+        # For simplicity, reuse analyze to produce a rebuttal; could be upgraded to a specific A2A method.
+        data = await self._post_analyze(challenge)
+        analysis = data.get("analysis") or json.dumps(data)
+        recommendation = data.get("recommendation") or analysis[:500]
+
+        return DebateRebuttal(
+            agent_id=self.agent_id,
+            task_id=task_id,
+            defense=analysis,
+            new_evidence_cited=[],
+            tool_calls=[],
         )
 
 
