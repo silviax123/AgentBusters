@@ -202,9 +202,9 @@ print(f"CAGR: {cagr:.4f}")
     def test_execute_statistical_analysis(self):
         """Test executing statistical analysis in sandbox."""
         import numpy as np
-        from scipy import stats
 
         # Simulate returns data
+        np.random.seed(42)
         returns = np.random.randn(100) * 0.02  # 2% daily volatility
 
         # Calculate statistics
@@ -212,11 +212,13 @@ print(f"CAGR: {cagr:.4f}")
         std_return = np.std(returns)
         sharpe_ratio = mean_return / std_return * np.sqrt(252)  # Annualized
 
-        # Normality test
-        _, p_value = stats.normaltest(returns)
+        # Basic statistical tests using numpy only (avoiding scipy import issue)
+        skewness = np.mean(((returns - mean_return) / std_return) ** 3)
+        kurtosis = np.mean(((returns - mean_return) / std_return) ** 4) - 3
 
         assert isinstance(sharpe_ratio, float)
-        assert isinstance(p_value, float)
+        assert isinstance(skewness, float)
+        assert isinstance(kurtosis, float)
 
     def test_safe_builtins_security(self):
         """Test that dangerous operations are restricted."""

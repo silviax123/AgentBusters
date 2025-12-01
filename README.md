@@ -132,7 +132,7 @@ docker ps --filter "name=fab-plus"
 ```
 
 ### One-shot CSV batch run (headless)
-Calls Purple `/analyze`; remove `--purple-endpoint` to use mock agent.
+Calls Purple `/analyze` endpoint. The `--purple-endpoint` flag is required.
 ```bash
 docker compose run --rm --user root cio-agent sh -c "python -m scripts.run_csv_eval --dataset-path /app/data/public.csv --simulation-date 2024-12-31 --difficulty medium --output /data/results/summary.json --purple-endpoint http://fab-plus-purple-agent:8001 && cat /data/results/summary.json"
 ```
@@ -155,7 +155,7 @@ Options:
 - `--limit N` cap rows
 - `--seed` fix randomness (ticker/year substitution)
 - `--no-debate` skip debate phase
-- `--purple-endpoint` call Purple `/analyze` (e.g., `http://fab-plus-purple-agent:8001`); omit to use mock
+- `--purple-endpoint` (required) call Purple `/analyze` (e.g., `http://fab-plus-purple-agent:8001`)
 - `--output` target JSON; if `/data/results` not writable, use `--user root` or `/tmp/summary.json`
 
 ### Green Agent single-task via Purple

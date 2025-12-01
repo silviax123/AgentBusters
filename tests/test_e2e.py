@@ -10,6 +10,7 @@ Sources:
 - https://www.cnbc.com/2025/11/19/nvidia-nvda-earnings-report-q3-2026.html
 """
 
+import os
 import pytest
 import asyncio
 from datetime import datetime
@@ -31,13 +32,16 @@ from cio_agent.models import (
     ConvictionLevel,
 )
 from cio_agent.task_generator import DynamicTaskGenerator
-from cio_agent.orchestrator import MockAgentClient
+from cio_agent.a2a_client import PurpleHTTPAgentClient
 from cio_agent.evaluator import ComprehensiveEvaluator, EvaluationReporter
 from cio_agent.debate import AdversarialDebateManager
 from evaluators.macro import MacroEvaluator
 from evaluators.fundamental import FundamentalEvaluator
 from evaluators.execution import ExecutionEvaluator
 from evaluators.cost_tracker import CostTracker
+
+# Purple agent endpoint for integration tests
+PURPLE_ENDPOINT = os.environ.get("PURPLE_ENDPOINT", "http://localhost:8010")
 
 
 # ============================================================================
@@ -532,8 +536,12 @@ class TestFullPipelineE2E:
             ),
         )
 
-        # Create mock agent
-        agent = MockAgentClient(agent_id="integration-test-agent", model="gpt-4o")
+        # Create agent client
+        agent = PurpleHTTPAgentClient(
+            base_url=PURPLE_ENDPOINT,
+            agent_id="integration-test-agent",
+            model="purple-http",
+        )
 
         # Run full evaluation
         evaluator = ComprehensiveEvaluator()

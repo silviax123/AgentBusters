@@ -20,7 +20,6 @@ from rich.panel import Panel
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from cio_agent.task_generator import DynamicTaskGenerator, FABDataset
-from cio_agent.orchestrator import MockAgentClient
 from cio_agent.evaluator import ComprehensiveEvaluator, EvaluationReporter
 from cio_agent.models import TaskCategory, TaskDifficulty
 from cio_agent.datasets.csv_provider import CsvFinanceDatasetProvider
@@ -50,10 +49,10 @@ def evaluate(
         "--model", "-m",
         help="Agent model to simulate"
     ),
-    purple_base_url: Optional[str] = typer.Option(
-        None,
+    purple_base_url: str = typer.Option(
+        ...,
         "--purple-endpoint",
-        help="Purple agent base URL (e.g., http://purple-agent:8001 or http://localhost:8001)",
+        help="Purple agent base URL (e.g., http://purple-agent:8010 or http://localhost:8010)",
         envvar="PURPLE_ENDPOINT",
     ),
     no_debate: bool = typer.Option(
@@ -104,14 +103,11 @@ def evaluate(
         # Initialize components
         task_generator = DynamicTaskGenerator(dataset_provider=dataset_provider)
         evaluator = ComprehensiveEvaluator()
-        if purple_base_url:
-            agent = PurpleHTTPAgentClient(
-                base_url=purple_base_url,
-                agent_id="purple-agent",
-                model=agent_model,
-            )
-        else:
-            agent = MockAgentClient(agent_id="test-agent", model=agent_model)
+        agent = PurpleHTTPAgentClient(
+            base_url=purple_base_url,
+            agent_id="purple-agent",
+            model=agent_model,
+        )
 
         with Progress(
             SpinnerColumn(),
@@ -281,6 +277,12 @@ def batch_evaluate(
         "--date", "-d",
         help="Simulation date (YYYY-MM-DD)"
     ),
+    purple_base_url: str = typer.Option(
+        ...,
+        "--purple-endpoint",
+        help="Purple agent base URL (e.g., http://purple-agent:8010 or http://localhost:8010)",
+        envvar="PURPLE_ENDPOINT",
+    ),
     output_file: Optional[Path] = typer.Option(
         None,
         "--file", "-f",
@@ -323,7 +325,11 @@ def batch_evaluate(
     async def run_batch():
         generator = DynamicTaskGenerator()
         evaluator = ComprehensiveEvaluator()
-        agent = MockAgentClient(agent_id="batch-agent", model="gpt-4o")
+        agent = PurpleHTTPAgentClient(
+            base_url=purple_base_url,
+            agent_id="purple-agent",
+            model="purple-http",
+        )
 
         tasks = await generator.generate_task_batch(
             count=count,

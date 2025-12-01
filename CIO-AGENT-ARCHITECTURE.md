@@ -1068,7 +1068,7 @@ Aligned with the 6-week timeline from the FAB++ Protocol:
   - Set up A2A Protocol message handlers
   - Create task assignment workflow
   - Implement response collection with timeout handling
-  - Test communication with mock White/Purple agents
+  - Test communication with Purple agents via HTTP
 
 - [ ] Implement `ToolUsageMonitor`
   - Create real-time tool call interception

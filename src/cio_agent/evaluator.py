@@ -27,7 +27,7 @@ from cio_agent.models import (
 )
 from cio_agent.task_generator import DynamicTaskGenerator
 from cio_agent.debate import AdversarialDebateManager
-from cio_agent.orchestrator import A2AOrchestrator, MockAgentClient
+from cio_agent.orchestrator import A2AOrchestrator
 from evaluators.macro import MacroEvaluator
 from evaluators.fundamental import FundamentalEvaluator
 from evaluators.execution import ExecutionEvaluator
