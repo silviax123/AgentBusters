@@ -50,12 +50,33 @@ class TestParseRubric:
         assert criteria == []
         assert penalties == []
 
-    def test_valid_json_rubric(self):
-        """Valid JSON rubric should be parsed correctly."""
-        rubric = '[{"operator": "correctness", "criteria": "Check revenue"}, {"operator": "contradiction", "criteria": "Avoid wrong data"}]'
+    def test_required_type(self):
+        """type='required' should be parsed as required criteria."""
+        rubric = '[{"type": "required", "criteria": "Must identify growth trend"}]'
+        criteria, penalties = _parse_rubric(rubric)
+        assert criteria == ["Must identify growth trend"]
+        assert penalties == []
+
+    def test_penalty_type(self):
+        """type='penalty' should be parsed as penalty conditions."""
+        rubric = '[{"type": "penalty", "criteria": "Should not confuse metrics"}]'
+        criteria, penalties = _parse_rubric(rubric)
+        assert criteria == []
+        assert penalties == ["Should not confuse metrics"]
+
+    def test_mixed_types(self):
+        """Both required and penalty types should be parsed correctly."""
+        rubric = '[{"type": "required", "criteria": "Check revenue"}, {"type": "penalty", "criteria": "Avoid wrong data"}]'
         criteria, penalties = _parse_rubric(rubric)
         assert criteria == ["Check revenue"]
         assert penalties == ["Avoid wrong data"]
+
+    def test_multiple_required(self):
+        """Multiple required criteria should all be captured."""
+        rubric = '[{"type": "required", "criteria": "First"}, {"type": "required", "criteria": "Second"}]'
+        criteria, penalties = _parse_rubric(rubric)
+        assert criteria == ["First", "Second"]
+        assert penalties == []
 
     def test_invalid_json_falls_back(self):
         """Invalid JSON should fall back to raw string."""
@@ -66,9 +87,22 @@ class TestParseRubric:
 
     def test_missing_criteria_skipped(self):
         """Items without criteria should be skipped."""
-        rubric = '[{"operator": "correctness"}, {"operator": "correctness", "criteria": "Valid"}]'
+        rubric = '[{"type": "required"}, {"type": "required", "criteria": "Valid"}]'
         criteria, penalties = _parse_rubric(rubric)
         assert criteria == ["Valid"]
+
+    def test_missing_type_skipped(self):
+        """Items without type should be skipped."""
+        rubric = '[{"criteria": "No type"}, {"type": "required", "criteria": "Has type"}]'
+        criteria, penalties = _parse_rubric(rubric, row_index=0)
+        assert criteria == ["Has type"]
+
+    def test_unknown_type_skipped(self):
+        """Unknown type values should be skipped with warning."""
+        rubric = '[{"type": "unknown", "criteria": "Skip this"}, {"type": "required", "criteria": "Keep this"}]'
+        criteria, penalties = _parse_rubric(rubric, row_index=0)
+        assert criteria == ["Keep this"]
+        assert penalties == []
 
 
 class TestCsvFinanceDatasetProvider:

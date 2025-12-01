@@ -305,12 +305,20 @@ class EvaluationResult(BaseModel):
     agent_id: str
     timestamp: datetime = Field(default_factory=datetime.utcnow)
 
+    # Agent's response
+    agent_analysis: str = Field(default="", description="Purple agent's full analysis")
+    agent_recommendation: str = Field(default="", description="Purple agent's final answer/recommendation")
+
     # Scores
     role_score: RoleScore
     debate_result: DebateResult
     cost_breakdown: CostBreakdown
     lookahead_penalty: LookAheadPenalty
     alpha_score: AlphaScore
+
+    # Green agent evaluation feedback
+    execution_feedback: str = Field(default="", description="Green agent's justification for execution score")
+    macro_feedback: str = Field(default="", description="Green agent's feedback on macro analysis")
 
     # Tool usage details
     tool_calls: list[ToolCall] = Field(default_factory=list)

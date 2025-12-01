@@ -43,13 +43,12 @@ class PurpleHTTPAgentClient:
             data = resp.json()
 
         analysis = data.get("analysis") or "No analysis returned."
-        recommendation = analysis.splitlines()[0][:200] if analysis else "No recommendation."
 
         return AgentResponse(
             agent_id=self.agent_id,
             task_id=task.question_id,
             analysis=analysis,
-            recommendation=recommendation,
+            recommendation=analysis,  # Same as analysis - recommendation field required by model
             extracted_financials=FinancialData(),
             tool_calls=[],
             code_executions=[],
@@ -63,20 +62,65 @@ class PurpleHTTPAgentClient:
         challenge: str,
         original_response: Optional[AgentResponse] = None,
     ) -> DebateRebuttal:
-        """Return a simple rebuttal acknowledging the challenge."""
-        defense_lines = [
-            "Acknowledging the challenge:",
-            challenge,
-            "",
-            "I maintain the core thesis and will monitor the highlighted risks.",
+        """
+        Get a real rebuttal from the Purple Agent by calling /analyze with debate context.
+
+        This reuses the /analyze endpoint by framing the debate as a contextual question
+        that includes the original analysis and the counter-argument, prompting the LLM
+        to generate a substantive defense.
+        """
+        original_analysis = original_response.analysis if original_response else "No original analysis."
+
+        debate_prompt = f"""DEBATE REBUTTAL REQUEST
+
+Your original analysis was:
+---
+{original_analysis}
+---
+
+A critical reviewer has challenged your analysis:
+---
+{challenge}
+---
+
+Respond to this challenge. Either:
+1. Defend your original analysis with specific evidence and reasoning
+2. Address each point raised by the reviewer
+3. If valid criticisms, acknowledge them and refine your position
+
+Be substantive and specific. Do not simply repeat your original analysis."""
+
+        url = f"{self.base_url}/analyze"
+        payload = {
+            "question": debate_prompt,
+            "ticker": "DEBATE",
+            "simulation_date": datetime.now().isoformat(),
+        }
+
+        async with httpx.AsyncClient(timeout=self.timeout_seconds) as client:
+            resp = await client.post(url, json=payload)
+            resp.raise_for_status()
+            data = resp.json()
+
+        defense = data.get("analysis") or "No defense provided."
+
+        # Detect if new evidence was cited (not in original analysis)
+        new_evidence_cited = []
+        evidence_indicators = [
+            "according to", "data shows", "reported", "SEC filing",
+            "10-K", "10-Q", "earnings call", "quarterly report"
         ]
-        if original_response:
-            defense_lines.append(f"Original recommendation: {original_response.recommendation}")
+        defense_lower = defense.lower()
+        original_lower = original_analysis.lower()
+        for indicator in evidence_indicators:
+            if indicator in defense_lower and indicator not in original_lower:
+                new_evidence_cited.append(f"New reference: {indicator}")
+                break
 
         return DebateRebuttal(
             agent_id=self.agent_id,
             task_id=task_id,
-            defense="\n".join(defense_lines),
-            new_evidence_cited=[],
+            defense=defense,
+            new_evidence_cited=new_evidence_cited,
             tool_calls=[],
         )

@@ -466,15 +466,30 @@ class DynamicTaskGenerator:
         # For comparison tasks, get a competitor ticker
         comp_ticker = self.sample_similar_company(new_ticker)
 
-        # Format the question
-        question_text = template.template.format(
-            ticker=new_ticker,
-            year=new_year,
-            prev_year=new_year - 1,
-            start_year=new_year - 2,
-            quarter=random.randint(1, 4),
-            comp_ticker=comp_ticker,
-        )
+        # Check if template contains placeholders for dynamic substitution
+        has_placeholders = "{ticker}" in template.template or "{year}" in template.template
+
+        if has_placeholders:
+            # Format the question with substituted values
+            question_text = template.template.format(
+                ticker=new_ticker,
+                year=new_year,
+                prev_year=new_year - 1,
+                start_year=new_year - 2,
+                quarter=random.randint(1, 4),
+                comp_ticker=comp_ticker,
+            )
+            task_id = f"{template_id}_variant_{new_ticker}_{new_year}"
+        else:
+            # Literal question from CSV - use as-is, extract year from text if present
+            question_text = template.template
+            import re
+            year_match = re.search(r'\b(20\d{2})\b', question_text)
+            if year_match:
+                new_year = int(year_match.group(1))
+            # Use "LITERAL" to indicate this is a literal question, not a generated variant
+            new_ticker = "LITERAL"
+            task_id = f"{template_id}_literal_{new_year}"
 
         # Fetch ground truth (prefer dataset-provided)
         dataset_example = self.dataset_examples_by_id.get(template.template_id)
@@ -482,9 +497,6 @@ class DynamicTaskGenerator:
             ground_truth = dataset_example.ground_truth
         else:
             ground_truth = await self.fetch_ground_truth(new_ticker, new_year, template.metric)
-
-        # Generate unique task ID
-        task_id = f"{template_id}_variant_{new_ticker}_{new_year}"
 
         task = Task(
             question_id=task_id,

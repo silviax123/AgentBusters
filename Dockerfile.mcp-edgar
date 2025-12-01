@@ -3,7 +3,8 @@ WORKDIR /app
 
 RUN pip install fastmcp edgartools pandas numpy
 
-COPY src/mcp_servers/sec_edgar.py /app/sec_edgar.py
+# Copy to the path expected by docker-compose command
+COPY src/mcp_servers/sec_edgar.py /app/src/mcp_servers/sec_edgar.py
 
 EXPOSE 8000
-CMD ["python", "/app/sec_edgar.py"]
+CMD ["fastmcp", "run", "src/mcp_servers/sec_edgar.py:create_edgar_server", "--transport", "http", "--host", "0.0.0.0", "--port", "8000"]

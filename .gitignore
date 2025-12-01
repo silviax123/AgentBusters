@@ -83,3 +83,4 @@ Thumbs.db
 evaluation-results/
 edgar-cache/
 yfinance-cache/
+data/results.json

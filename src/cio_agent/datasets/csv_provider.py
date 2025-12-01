@@ -3,11 +3,22 @@ CSV-backed dataset provider for finance Q/A (e.g., data/public.csv).
 
 Expected columns:
     Question, Answer, Question Type, Expert time (mins), Rubric
+
+Rubric format (JSON array):
+    [
+        {"type": "required", "criteria": "Must identify growth trend"},
+        {"type": "penalty", "criteria": "Should not confuse metrics"}
+    ]
+
+    Types:
+        - "required": Criteria the answer SHOULD satisfy (positive scoring)
+        - "penalty": Criteria the answer should NOT violate (score deductions)
 """
 
 import csv
 import json
 import logging
+from enum import Enum
 from pathlib import Path
 from typing import List
 
@@ -22,9 +33,23 @@ from cio_agent.models import (
 
 logger = logging.getLogger(__name__)
 
+
+class RubricCriterionType(str, Enum):
+    """Type of rubric criterion for evaluating agent responses."""
+
+    REQUIRED = "required"  # Answer SHOULD satisfy this (positive scoring)
+    PENALTY = "penalty"  # Answer should NOT violate this (score deduction)
+
 # Required columns for the CSV dataset
 REQUIRED_COLUMNS = {"Question", "Question Type"}
-OPTIONAL_COLUMNS = {"Answer", "Expert time (mins)", "Rubric"}
+OPTIONAL_COLUMNS = {
+    "Answer",  # Text answer / macro thesis
+    "Expert time (mins)",  # Used to determine difficulty
+    "Rubric",  # JSON array of criteria
+    "Numerical Answer",  # For calculation tasks: exact numeric answer
+    "Expected Recommendation",  # For investment tasks: Buy/Sell/Hold
+    "Tolerance",  # Acceptable error margin for numerical answers (default 0.01 = 1%)
+}
 
 # Map CSV "Question Type" to internal categories
 QUESTION_TYPE_MAP = {
@@ -53,25 +78,50 @@ def _map_difficulty(expert_minutes: float) -> TaskDifficulty:
 
 def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
     """
-    Parse rubric JSON (list of {operator, criteria}) into criteria and penalties.
+    Parse rubric JSON into required criteria and penalty conditions.
+
+    Expected format: [{"type": "required"|"penalty", "criteria": "..."}]
+
     Falls back to a simple single-criteria list if parsing fails.
+
+    Returns:
+        Tuple of (required_criteria, penalty_conditions)
     """
     if not raw:
         return [], []
 
     try:
         data = json.loads(raw)
-        criteria, penalties = [], []
+        required_criteria: list[str] = []
+        penalty_conditions: list[str] = []
+
         for item in data:
-            op = item.get("operator")
             crit = item.get("criteria")
             if not crit:
                 continue
-            if op == "correctness":
-                criteria.append(crit)
-            elif op == "contradiction":
-                penalties.append(crit)
-        return criteria, penalties
+
+            criterion_type_str = item.get("type")
+            if not criterion_type_str:
+                logger.warning(f"Row {row_index}: Missing 'type' field in rubric item. Skipping.")
+                continue
+
+            try:
+                criterion_type = RubricCriterionType(criterion_type_str)
+            except ValueError:
+                logger.warning(
+                    f"Row {row_index}: Unknown rubric type '{criterion_type_str}'. "
+                    f"Valid types: {[t.value for t in RubricCriterionType]}"
+                )
+                continue
+
+            # Categorize the criterion
+            if criterion_type == RubricCriterionType.REQUIRED:
+                required_criteria.append(crit)
+            elif criterion_type == RubricCriterionType.PENALTY:
+                penalty_conditions.append(crit)
+
+        return required_criteria, penalty_conditions
+
     except json.JSONDecodeError as e:
         logger.warning(f"Row {row_index}: Failed to parse rubric JSON: {e}. Using raw value.")
         return [raw], []
@@ -126,9 +176,30 @@ class CsvFinanceDatasetProvider(DatasetProvider):
                 criteria, penalties = _parse_rubric(row.get("Rubric", ""), row_index=idx)
                 rubric = TaskRubric(criteria=criteria, penalty_conditions=penalties)
 
+                # Parse optional numerical answer
+                numerical_answer = None
+                numerical_str = row.get("Numerical Answer", "").strip()
+                if numerical_str:
+                    try:
+                        numerical_answer = float(numerical_str)
+                    except ValueError:
+                        logger.warning(f"Row {idx}: Invalid numerical answer '{numerical_str}'")
+
+                # Parse optional tolerance
+                tolerance = 0.01  # Default 1%
+                tolerance_str = row.get("Tolerance", "").strip()
+                if tolerance_str:
+                    try:
+                        tolerance = float(tolerance_str)
+                    except ValueError:
+                        logger.warning(f"Row {idx}: Invalid tolerance '{tolerance_str}'")
+
                 ground_truth = GroundTruth(
                     macro_thesis=row.get("Answer", ""),
                     key_themes=criteria,
+                    expected_recommendation=row.get("Expected Recommendation", "").strip() or None,
+                    numerical_answer=numerical_answer,
+                    tolerance=tolerance,
                 )
 
                 rows.append(
