@@ -188,8 +188,15 @@ class AlphaVantageClient:
             if age_hours < self.cache_ttl_hours:
                 logger.debug("alphavantage_cache_hit", ticker=ticker, endpoint=endpoint)
                 return data
-        except (json.JSONDecodeError, ValueError):
-            pass
+        except (json.JSONDecodeError, ValueError) as e:
+            logger.warning(
+                "alphavantage_cache_corrupt",
+                msg=f"Failed to read cache for {ticker} {endpoint} at {cache_path}: {e}",
+                ticker=ticker,
+                endpoint=endpoint,
+                cache_path=str(cache_path),
+                exception=str(e),
+            )
         
         return None
     
