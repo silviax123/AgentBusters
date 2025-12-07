@@ -344,7 +344,7 @@ class AlphaVantageClient:
         capex = _parse_value(report.get("capitalExpenditures"))
         fcf = None
         if operating is not None and capex is not None:
-            fcf = operating - abs(capex)  # CapEx is often negative
+            fcf = operating + capex  # CapEx is typically negative (cash outflow)
         
         return CashFlowData(
             fiscal_date_ending=report.get("fiscalDateEnding", ""),
