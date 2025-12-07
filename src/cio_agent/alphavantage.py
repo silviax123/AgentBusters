@@ -212,7 +212,11 @@ class AlphaVantageClient:
         
         # Check for API errors
         if "Error Message" in data:
-            raise ValueError(f"AlphaVantage API error: {data['Error Message']}")
+            function = params.get("function", "unknown")
+            symbol = params.get("symbol", "unknown")
+            raise ValueError(
+                f"AlphaVantage API error for function '{function}' and symbol '{symbol}': {data['Error Message']}"
+            )
         if "Note" in data:
             logger.warning("alphavantage_api_note", note=data["Note"])
         
