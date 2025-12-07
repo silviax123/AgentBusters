@@ -949,7 +949,6 @@ class SyntheticTaskGenerator:
             return None
         
         balance = data.annual_balance_sheets[0]
-        income = data.annual_income_statements[0]
         year = int(balance.fiscal_date_ending[:4])
         
         # Calculate debt-to-equity ratio
