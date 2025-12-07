@@ -69,7 +69,10 @@ class QuestionVerifier:
             (match, error_percentage)
         """
         if expected == 0:
-            return computed == 0, 0.0
+            if computed == 0:
+                return True, 0.0
+            else:
+                return False, float('inf')
         
         error_percentage = abs(computed - expected) / abs(expected) * 100
         match = (error_percentage / 100) <= self.tolerance
