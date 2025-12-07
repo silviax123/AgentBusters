@@ -27,7 +27,7 @@ from cio_agent.models import (
     FinancialData,
 )
 from cio_agent.financial_lake import FinancialLake, TICKER_UNIVERSE, TICKER_TO_SECTOR
-from cio_agent.alphavantage import FundamentalData, IncomeStatementData, BalanceSheetData
+from cio_agent.alphavantage import FundamentalData
 
 logger = structlog.get_logger()
 
