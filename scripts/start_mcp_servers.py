@@ -33,10 +33,12 @@ def parse_args():
     )
     parser.add_argument(
         "--transport",
-        choices=["stdio", "sse"],
+        choices=["stdio", "http", "sse", "streamable-http"],
         default="stdio",
         help="Transport protocol (default: stdio)",
     )
+    parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transports")
+    parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transports")
     return parser.parse_args()
 
 
@@ -49,20 +51,24 @@ def main():
         simulation_date = datetime.fromisoformat(args.simulation_date)
         print(f"Temporal locking enabled: simulation date = {simulation_date}")
 
+    transport_kwargs = {}
+    if args.transport != "stdio":
+        transport_kwargs = {"host": args.host, "port": args.port}
+
     if args.server == "edgar":
         print("Starting SEC EDGAR MCP server...")
         server = create_edgar_server(simulation_date=simulation_date)
-        server.run(transport=args.transport)
+        server.run(transport=args.transport, **transport_kwargs)
 
     elif args.server == "yfinance":
         print("Starting Yahoo Finance MCP server...")
         server = create_yahoo_finance_server(simulation_date=simulation_date)
-        server.run(transport=args.transport)
+        server.run(transport=args.transport, **transport_kwargs)
 
     elif args.server == "sandbox":
         print("Starting Python Sandbox MCP server...")
         server = create_sandbox_server()
-        server.run(transport=args.transport)
+        server.run(transport=args.transport, **transport_kwargs)
 
     elif args.server == "all":
         print("To run all servers, start each in a separate terminal:")

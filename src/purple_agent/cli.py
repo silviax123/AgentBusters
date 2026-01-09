@@ -10,6 +10,8 @@ import asyncio
 from datetime import datetime
 from typing import Optional
 
+from dotenv import load_dotenv
+
 import typer
 from rich.console import Console
 from rich.panel import Panel
@@ -20,6 +22,9 @@ app = typer.Typer(
     help="Purple Finance Agent - A2A-compliant finance analysis agent for AgentBeats",
 )
 console = Console()
+
+# Load environment variables from .env if present so CLI picks up LLM and keys
+load_dotenv()
 
 
 @app.command()

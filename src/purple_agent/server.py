@@ -10,6 +10,8 @@ import asyncio
 from datetime import datetime
 from typing import Any
 
+from dotenv import load_dotenv
+
 from fastapi import FastAPI, Request, Response
 from fastapi.responses import JSONResponse
 
@@ -45,27 +47,32 @@ def create_app(
     Returns:
         FastAPI application instance
     """
+    # Load environment variables from .env if present
+    load_dotenv()
+    # Pull from environment if not provided explicitly
+    openai_api_key = openai_api_key or os.environ.get("OPENAI_API_KEY")
+    anthropic_api_key = anthropic_api_key or os.environ.get("ANTHROPIC_API_KEY")
+    default_model = model or os.environ.get("LLM_MODEL")
+
     # Initialize LLM client
     llm_client = None
-    default_model = model
 
     if openai_api_key:
         try:
             from openai import OpenAI
-            import os
             base_url = os.environ.get("OPENAI_API_BASE")
             llm_client = OpenAI(
                 api_key=openai_api_key,
                 base_url=base_url  # Supports local vLLM
             )
-            default_model = model or os.environ.get("LLM_MODEL", "gpt-4o")
+            default_model = default_model or "gpt-4o"
         except ImportError:
             pass
     elif anthropic_api_key:
         try:
             from anthropic import Anthropic
             llm_client = Anthropic(api_key=anthropic_api_key)
-            default_model = model or "claude-sonnet-4-20250514"
+            default_model = default_model or "claude-sonnet-4-20250514"
         except ImportError:
             pass
 

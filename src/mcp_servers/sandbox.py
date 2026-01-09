@@ -426,5 +426,24 @@ def _serialize_value(value: Any) -> Any:
 
 # CLI entry point
 if __name__ == "__main__":
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run Python Sandbox MCP server")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transports")
+    parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transports")
+
+    args = parser.parse_args()
+
     server = create_sandbox_server()
-    server.run()
+
+    transport_kwargs = {}
+    if args.transport != "stdio":
+        transport_kwargs = {"host": args.host, "port": args.port}
+
+    server.run(transport=args.transport, **transport_kwargs)

@@ -1,0 +1,99 @@
+{
+  "verified_at": "2026-01-09T12:01:23.265893",
+  "summary": {
+    "total": 7,
+    "accept": 7,
+    "reject": 0,
+    "refine": 0,
+    "accept_rate": 1.0
+  },
+  "reports": [
+    {
+      "question_id": "SYN_QUAN_0001",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": 134661000000.0,
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    },
+    {
+      "question_id": "SYN_QUAL_0002",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": "Apple Inc. is a preeminent American multinational technology company renowned for its innovative consumer electronics, software, and online services. With a staggering revenue of $274.5 billion in 2020, it stands as the world's most valuable publicly traded company, significantly influencing the global technology sector. Its flagship products\u2014iPhone, iPad, and Mac\u2014continue to define consumer expectations and set industry benchmarks, securing its position as a leader in both the smartphone and personal computer markets. As a key player among the \"Big Five\" technology firms, Apple remains at the forefront of technological advancements and consumer engagement strategies.",
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    },
+    {
+      "question_id": "SYN_NUME_0003",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": 0.2691506412181824,
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    },
+    {
+      "question_id": "SYN_BEAT_0004",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": {
+        "beat": true,
+        "surprise_pct": 4.7059
+      },
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    },
+    {
+      "question_id": "SYN_COMP_0005",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": {
+        "ratio": 1.3667421642954987,
+        "debt": 100774000000.0,
+        "equity": 73733000000.0
+      },
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    },
+    {
+      "question_id": "SYN_TREN_0006",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": {
+        "cagr": 1.199518338720932,
+        "trend": "strong growth"
+      },
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    },
+    {
+      "question_id": "SYN_FINA_0007",
+      "result": "accept",
+      "computed_answer": null,
+      "expected_answer": 387204000000.0,
+      "match": false,
+      "error_percentage": null,
+      "issues": [],
+      "suggestions": [],
+      "reasoning": "Verified with 0 issues found"
+    }
+  ]
+}

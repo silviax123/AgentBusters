@@ -29,6 +29,14 @@ from cio_agent.alphavantage import FundamentalData
 
 logger = structlog.get_logger()
 
+# Trend classification thresholds for CAGR (Compound Annual Growth Rate)
+# These buckets are used by generate_trends() to label the trajectory.
+# Adjust if you want stricter or looser bands.
+CAGR_STRONG_GROWTH_THRESHOLD = 0.20      # > +20%/yr → strong growth
+CAGR_MODERATE_GROWTH_THRESHOLD = 0.10    # > +10%/yr → moderate growth
+CAGR_STABLE_THRESHOLD = -0.02            # > -2%/yr  → stable (roughly flat)
+CAGR_MODERATE_DECLINE_THRESHOLD = -0.10  # > -10%/yr → moderate decline; else significant decline
+
 
 class RubricComponent(BaseModel):
     """Single component of a weighted rubric."""

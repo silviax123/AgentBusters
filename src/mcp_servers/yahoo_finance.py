@@ -436,14 +436,32 @@ Target Price: ${info.get('targetMeanPrice', 'N/A')}
 
 # CLI entry point
 if __name__ == "__main__":
-    import sys
+    import argparse
+
+    parser = argparse.ArgumentParser(description="Run Yahoo Finance MCP server")
+    parser.add_argument("--simulation-date", type=str, help="YYYY-MM-DD for temporal locking")
+    parser.add_argument(
+        "--transport",
+        choices=["stdio", "http", "sse", "streamable-http"],
+        default="stdio",
+        help="Transport protocol (default: stdio)",
+    )
+    parser.add_argument("--host", default="127.0.0.1", help="Host for HTTP transports")
+    parser.add_argument("--port", type=int, default=8000, help="Port for HTTP transports")
+
+    args = parser.parse_args()
 
     simulation_date = None
-    if len(sys.argv) > 1:
+    if args.simulation_date:
         try:
-            simulation_date = datetime.fromisoformat(sys.argv[1])
+            simulation_date = datetime.fromisoformat(args.simulation_date)
         except ValueError:
             pass
 
     server = create_yahoo_finance_server(simulation_date=simulation_date)
-    server.run()
+
+    transport_kwargs = {}
+    if args.transport != "stdio":
+        transport_kwargs = {"host": args.host, "port": args.port}
+
+    server.run(transport=args.transport, **transport_kwargs)

@@ -1,0 +1,348 @@
+{
+  "generated_at": "2026-01-09T12:01:10.037460",
+  "count": 7,
+  "questions": [
+    {
+      "question_id": "SYN_QUAN_0001",
+      "category": "Quantitative Retrieval",
+      "difficulty": "easy",
+      "question": "What was AAPL's EBITDA in fiscal year 2024?",
+      "ground_truth_value": 134661000000.0,
+      "ground_truth_formatted": "$134.66B",
+      "ticker": "AAPL",
+      "fiscal_year": 2024,
+      "calculation_steps": [
+        "Retrieved EBITDA from FY2024 income statement"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "retrieval_accuracy",
+            "description": "Correctly extracted EBITDA value",
+            "expected_value": "$134.66B",
+            "weight": 0.5
+          },
+          {
+            "name": "fiscal_year",
+            "description": "Referenced correct fiscal year",
+            "expected_value": "2024",
+            "weight": 0.3
+          },
+          {
+            "name": "units",
+            "description": "Correctly stated units (millions/billions USD)",
+            "expected_value": null,
+            "weight": 0.2
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": false,
+      "metadata": {}
+    },
+    {
+      "question_id": "SYN_QUAL_0002",
+      "category": "Qualitative Retrieval",
+      "difficulty": "easy",
+      "question": "Describe AAPL's main business and products.",
+      "ground_truth_value": "Apple Inc. is a preeminent American multinational technology company renowned for its innovative consumer electronics, software, and online services. With a staggering revenue of $274.5 billion in 2020, it stands as the world's most valuable publicly traded company, significantly influencing the global technology sector. Its flagship products\u2014iPhone, iPad, and Mac\u2014continue to define consumer expectations and set industry benchmarks, securing its position as a leader in both the smartphone and personal computer markets. As a key player among the \"Big Five\" technology firms, Apple remains at the forefront of technological advancements and consumer engagement strategies.",
+      "ground_truth_formatted": "Apple Inc. is a preeminent American multinational technology company renowned for its innovative consumer electronics, software, and online services. With a staggering revenue of $274.5 billion in 2020, it stands as the world's most valuable publicly traded company, significantly influencing the global technology sector. Its flagship products\u2014iPhone, iPad, and Mac\u2014continue to define consumer expectations and set industry benchmarks, securing its position as a leader in both the smartphone and pe",
+      "ticker": "AAPL",
+      "fiscal_year": 2026,
+      "calculation_steps": [
+        "Retrieved company overview from filings"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "content_accuracy",
+            "description": "Answer captures key business description elements",
+            "expected_value": null,
+            "weight": 0.4
+          },
+          {
+            "name": "sector_industry",
+            "description": "Correctly identifies sector (TECHNOLOGY) or industry (CONSUMER ELECTRONICS)",
+            "expected_value": "TECHNOLOGY",
+            "weight": 0.3
+          },
+          {
+            "name": "completeness",
+            "description": "Provides sufficient detail without irrelevant information",
+            "expected_value": null,
+            "weight": 0.3
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": false,
+      "metadata": {
+        "question_type": "business_description",
+        "key_themes": [
+          "TECHNOLOGY",
+          "CONSUMER ELECTRONICS"
+        ]
+      }
+    },
+    {
+      "question_id": "SYN_NUME_0003",
+      "category": "Numerical Reasoning",
+      "difficulty": "medium",
+      "question": "Calculate AAPL's net profit margin for FY2025.",
+      "ground_truth_value": 0.2691506412181824,
+      "ground_truth_formatted": "26.92%",
+      "ticker": "AAPL",
+      "fiscal_year": 2025,
+      "calculation_steps": [
+        "Net Income = $112.01B",
+        "Total Revenue = $416.16B",
+        "Net Margin = Net Income / Revenue = 26.92%"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "formula_application",
+            "description": "Applied correct formula for calculation",
+            "expected_value": null,
+            "weight": 0.3
+          },
+          {
+            "name": "data_retrieval",
+            "description": "Retrieved correct input values",
+            "expected_value": null,
+            "weight": 0.3
+          },
+          {
+            "name": "calculation",
+            "description": "Calculation result within 1% of 26.92%",
+            "expected_value": "26.92%",
+            "weight": 0.3
+          },
+          {
+            "name": "units",
+            "description": "Correctly expressed as percentage",
+            "expected_value": null,
+            "weight": 0.1
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": true,
+      "metadata": {
+        "calculation_type": "net_margin"
+      }
+    },
+    {
+      "question_id": "SYN_BEAT_0004",
+      "category": "Beat or Miss",
+      "difficulty": "medium",
+      "question": "Did NVDA beat or miss analyst EPS expectations in Q1 2025? By how much?",
+      "ground_truth_value": {
+        "beat": true,
+        "surprise_pct": 4.7059
+      },
+      "ground_truth_formatted": "Beat by 4.7% (Reported: $0.89, Estimated: $0.85)",
+      "ticker": "NVDA",
+      "fiscal_year": 2025,
+      "calculation_steps": [
+        "Retrieved Q1 2025 earnings",
+        "Reported EPS = $0.89",
+        "Estimated EPS = $0.85",
+        "Beat by 4.7%"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "beat_miss_determination",
+            "description": "Correctly determined that NVDA beat expectations",
+            "expected_value": "beat",
+            "weight": 0.4
+          },
+          {
+            "name": "reported_eps",
+            "description": "Retrieved correct reported EPS",
+            "expected_value": "$0.89",
+            "weight": 0.2
+          },
+          {
+            "name": "estimated_eps",
+            "description": "Retrieved correct consensus estimate",
+            "expected_value": "$0.85",
+            "weight": 0.2
+          },
+          {
+            "name": "surprise_magnitude",
+            "description": "Calculated correct surprise percentage",
+            "expected_value": "4.7%",
+            "weight": 0.2
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": false,
+      "metadata": {
+        "quarter": 1
+      }
+    },
+    {
+      "question_id": "SYN_COMP_0005",
+      "category": "Complex Retrieval",
+      "difficulty": "hard",
+      "question": "Calculate AAPL's debt-to-equity ratio as of FY2025. Also provide the total debt and shareholder equity figures.",
+      "ground_truth_value": {
+        "ratio": 1.3667421642954987,
+        "debt": 100774000000.0,
+        "equity": 73733000000.0
+      },
+      "ground_truth_formatted": "D/E Ratio: 1.37x (Debt: $100.77B, Equity: $73.73B)",
+      "ticker": "AAPL",
+      "fiscal_year": 2025,
+      "calculation_steps": [
+        "Total Debt = $100.77B",
+        "Shareholder Equity = $73.73B",
+        "Debt-to-Equity = Total Debt / Equity = 1.37x"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "debt_retrieval",
+            "description": "Retrieved total debt ($100.77B)",
+            "expected_value": "$100.77B",
+            "weight": 0.25
+          },
+          {
+            "name": "equity_retrieval",
+            "description": "Retrieved shareholder equity ($73.73B)",
+            "expected_value": "$73.73B",
+            "weight": 0.25
+          },
+          {
+            "name": "ratio_calculation",
+            "description": "Calculated D/E ratio correctly (1.37x)",
+            "expected_value": "1.37x",
+            "weight": 0.4
+          },
+          {
+            "name": "interpretation",
+            "description": "Provided context on leverage level",
+            "expected_value": null,
+            "weight": 0.1
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": true,
+      "metadata": {}
+    },
+    {
+      "question_id": "SYN_TREN_0006",
+      "category": "Trends",
+      "difficulty": "hard",
+      "question": "Analyze the revenue trend for NVDA from FY2023 to FY2025. What is the CAGR?",
+      "ground_truth_value": {
+        "cagr": 1.199518338720932,
+        "trend": "strong growth"
+      },
+      "ground_truth_formatted": "119.95% CAGR (strong growth)",
+      "ticker": "NVDA",
+      "fiscal_year": 2025,
+      "calculation_steps": [
+        "FY2023 Revenue = $26.97B",
+        "FY2024 Revenue = $60.92B",
+        "FY2025 Revenue = $130.50B",
+        "CAGR = (End/Start)^(1/n) - 1 = 119.95%"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "data_retrieval",
+            "description": "Retrieved revenue for all required years",
+            "expected_value": null,
+            "weight": 0.3
+          },
+          {
+            "name": "cagr_calculation",
+            "description": "Calculated CAGR within 1% of 119.95%",
+            "expected_value": "119.95%",
+            "weight": 0.4
+          },
+          {
+            "name": "trend_identification",
+            "description": "Correctly identified trend as strong growth",
+            "expected_value": "strong growth",
+            "weight": 0.3
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": true,
+      "metadata": {
+        "years": [
+          2023,
+          2024,
+          2025
+        ],
+        "revenues": [
+          26974000000.0,
+          60922000000.0,
+          130497000000.0
+        ]
+      }
+    },
+    {
+      "question_id": "SYN_FINA_0007",
+      "category": "Financial Modeling",
+      "difficulty": "expert",
+      "question": "Calculate AAPL's M&A firepower as of FY2025, assuming a maximum leverage of 3.0x EBITDA.",
+      "ground_truth_value": 387204000000.0,
+      "ground_truth_formatted": "$387.20B",
+      "ticker": "AAPL",
+      "fiscal_year": 2025,
+      "calculation_steps": [
+        "Cash & Equivalents = $33.54B",
+        "Short-term Investments = $21.16B",
+        "EBITDA = $144.43B",
+        "Debt Capacity (3x EBITDA) = $433.28B",
+        "Total Debt = $100.77B",
+        "M&A Firepower = (Cash + ST Invest) + Debt Capacity - Debt = $387.20B"
+      ],
+      "rubric": {
+        "components": [
+          {
+            "name": "concept_understanding",
+            "description": "Understood M&A firepower concept and formula",
+            "expected_value": null,
+            "weight": 0.25
+          },
+          {
+            "name": "data_retrieval",
+            "description": "Retrieved all required balance sheet and income statement items",
+            "expected_value": null,
+            "weight": 0.25
+          },
+          {
+            "name": "leverage_application",
+            "description": "Correctly applied 3x leverage multiplier to EBITDA",
+            "expected_value": null,
+            "weight": 0.25
+          },
+          {
+            "name": "calculation",
+            "description": "Final result within 5% of $387.20B",
+            "expected_value": "$387.20B",
+            "weight": 0.25
+          }
+        ],
+        "max_score": 100
+      },
+      "requires_code_execution": true,
+      "metadata": {
+        "cash": 33539000000.0,
+        "st_investments": 21158000000.0,
+        "ebitda": 144427000000.0,
+        "total_debt": 100774000000.0,
+        "max_leverage": 3.0
+      }
+    }
+  ]
+}

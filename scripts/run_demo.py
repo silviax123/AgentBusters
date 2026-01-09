@@ -11,7 +11,7 @@ Uses NVIDIA Q3 FY2026 earnings as a sample task with real financial data.
 
 Usage:
     python scripts/run_demo.py
-    PURPLE_ENDPOINT=http://localhost:8010 python scripts/run_demo.py
+    PURPLE_ENDPOINT=http://localhost:9110 python scripts/run_demo.py
 """
 
 import asyncio
@@ -35,7 +35,7 @@ from cio_agent.models import (
 from cio_agent.evaluator import ComprehensiveEvaluator, EvaluationReporter
 from cio_agent.a2a_client import PurpleHTTPAgentClient
 
-PURPLE_ENDPOINT = os.environ.get("PURPLE_ENDPOINT", "http://localhost:8010")
+PURPLE_ENDPOINT = os.environ.get("PURPLE_ENDPOINT", "http://localhost:9110")
 
 console = Console()
 

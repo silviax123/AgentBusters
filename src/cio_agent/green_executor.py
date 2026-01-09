@@ -5,6 +5,8 @@ Handles incoming A2A requests and routes them to the Green Agent.
 Based on the official green-agent-template from RDI-Foundation.
 """
 
+from typing import Optional
+
 from a2a.server.agent_execution import AgentExecutor, RequestContext
 from a2a.server.events import EventQueue
 from a2a.server.tasks import TaskUpdater
@@ -39,8 +41,16 @@ class GreenAgentExecutor(AgentExecutor):
     lifecycle for assessment requests.
     """
     
-    def __init__(self):
+    def __init__(self, synthetic_questions: Optional[list[dict]] = None):
+        """
+        Initialize the executor.
+        
+        Args:
+            synthetic_questions: Optional list of synthetic questions to use
+                                for evaluation instead of generating new ones.
+        """
         self.agents: dict[str, GreenAgent] = {}  # context_id to agent instance
+        self.synthetic_questions = synthetic_questions
 
     async def execute(self, context: RequestContext, event_queue: EventQueue) -> None:
         """
@@ -69,7 +79,7 @@ class GreenAgentExecutor(AgentExecutor):
         context_id = task.context_id
         agent = self.agents.get(context_id)
         if not agent:
-            agent = GreenAgent()
+            agent = GreenAgent(synthetic_questions=self.synthetic_questions)
             self.agents[context_id] = agent
 
         updater = TaskUpdater(event_queue, task.id, context_id)

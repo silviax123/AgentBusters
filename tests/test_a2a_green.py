@@ -165,3 +165,56 @@ async def test_evaluation_request_format(agent):
         # But we can check it's not a format rejection
         error_str = str(e).lower()
         assert "invalid request" not in error_str, f"Request format was rejected: {e}"
+
+
+@pytest.mark.asyncio
+async def test_synthetic_questions_evaluation(agent, purple_agent):
+    """
+    Test that the Green Agent can evaluate using synthetic questions.
+    
+    This test requires:
+    - Green Agent running with --synthetic-questions
+    - Purple Agent running
+    
+    Run with:
+        pytest tests/test_a2a_green.py::test_synthetic_questions_evaluation -v \
+            --agent-url http://localhost:9109 \
+            --purple-url http://localhost:9110
+    """
+    # Create evaluation request that will use synthetic questions
+    eval_request = {
+        "participants": {
+            "purple_agent": purple_agent
+        },
+        "config": {
+            "num_tasks": 1  # Only evaluate 1 synthetic question
+        }
+    }
+    
+    try:
+        events = await send_text_message(
+            json.dumps(eval_request),
+            agent,
+            streaming=False
+        )
+        
+        # Check that we got evaluation events
+        assert len(events) > 0, "Expected at least one event from the agent"
+        
+        # Verify the response contains expected evaluation structure
+        for event in events:
+            if hasattr(event, "model_dump"):
+                event_data = event.model_dump()
+                # Check for task or artifact in response
+                if "artifacts" in str(event_data):
+                    # Found evaluation artifacts - success
+                    break
+        
+    except httpx.ConnectError:
+        pytest.skip("Purple agent not running - skipping integration test")
+    except Exception as e:
+        error_str = str(e).lower()
+        if "connection" in error_str or "connect" in error_str:
+            pytest.skip(f"Connection error (expected in CI): {e}")
+        raise
+

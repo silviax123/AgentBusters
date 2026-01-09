@@ -22,7 +22,7 @@ class PurpleHTTPAgentClient:
         base_url: str,
         agent_id: str = "purple-agent",
         model: str = "purple-http",
-        timeout_seconds: int = 60,
+        timeout_seconds: int = 300,
     ):
         self.base_url = base_url.rstrip("/")
         self.agent_id = agent_id
@@ -61,6 +61,7 @@ class PurpleHTTPAgentClient:
         task_id: str,
         challenge: str,
         original_response: Optional[AgentResponse] = None,
+        ticker: Optional[str] = None,
     ) -> DebateRebuttal:
         """
         Get a real rebuttal from the Purple Agent by calling /analyze with debate context.
@@ -93,7 +94,7 @@ Be substantive and specific. Do not simply repeat your original analysis."""
         url = f"{self.base_url}/analyze"
         payload = {
             "question": debate_prompt,
-            "ticker": "DEBATE",
+            "ticker": ticker or "AAPL",  # Use provided ticker or default to a valid one
             "simulation_date": datetime.now().isoformat(),
         }
 

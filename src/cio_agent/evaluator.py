@@ -316,6 +316,7 @@ class ComprehensiveEvaluator:
                 task_id=task.question_id,
                 challenge=counter_argument,
                 original_response=agent_response,
+                ticker=task.ticker,
             )
 
             # Track debate costs
