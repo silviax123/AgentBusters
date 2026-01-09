@@ -212,8 +212,13 @@ async def create_agent(
     if openai_api_key:
         try:
             from openai import OpenAI
-            llm_client = OpenAI(api_key=openai_api_key)
-            default_model = model or "gpt-4o"
+            import os
+            base_url = os.environ.get("OPENAI_API_BASE")
+            llm_client = OpenAI(
+                api_key=openai_api_key,
+                base_url=base_url  # Supports local vLLM
+            )
+            default_model = model or os.environ.get("LLM_MODEL", "gpt-4o")
         except ImportError:
             pass
 

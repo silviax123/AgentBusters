@@ -2,6 +2,48 @@
 
 A dynamic finance agent benchmark system for the [AgentBeats Competition](https://rdi.berkeley.edu/agentx-agentbeats). This project implements both **Green Agent** (Evaluator) and **Purple Agent** (Finance Analyst) using the A2A (Agent-to-Agent) protocol.
 
+## 🚀 AgentBeats Platform Submission
+
+This codebase is designed to work with the [AgentBeats platform](https://agentbeats.dev). The Green Agent follows the official [green-agent-template](https://github.com/RDI-Foundation/green-agent-template).
+
+### Quick Start for AgentBeats
+
+```bash
+# 1. Create and activate virtual environment
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1  # Windows PowerShell
+# source .venv/bin/activate   # Linux/Mac
+
+# 2. Install dependencies
+pip install -e ".[dev]"
+
+# 3. Start Green Agent A2A server
+python src/cio_agent/a2a_server.py --host 0.0.0.0 --port 9009
+
+# 4. Verify agent card (in another terminal)
+curl http://localhost:9009/.well-known/agent.json
+
+# 5. Run A2A conformance tests
+python -m pytest tests/test_a2a_green.py -v --agent-url http://localhost:9009
+```
+
+### Docker Build & Publish
+
+```bash
+# Build Green Agent image
+docker build -f Dockerfile.green -t ghcr.io/your-org/cio-agent-green:latest .
+
+# Run locally
+docker run -p 9009:9009 ghcr.io/your-org/cio-agent-green:latest --host 0.0.0.0
+
+# Push to GitHub Container Registry
+docker push ghcr.io/your-org/cio-agent-green:latest
+```
+
+The CI/CD workflow (`.github/workflows/test-and-publish-green.yml`) automatically builds and publishes on push to `main` or version tags.
+
+---
+
 ## Overview
 
 The CIO-Agent FAB++ system evaluates AI agents on financial analysis tasks using:
@@ -41,7 +83,7 @@ The CIO-Agent FAB++ system evaluates AI agents on financial analysis tasks using
 
 ### Prerequisites
 
-- Python 3.11+
+- Python 3.11+ (Python 3.13 recommended for AgentBeats)
 - [uv](https://github.com/astral-sh/uv) (recommended) or pip
 - Docker (optional, for full stack deployment)
 
@@ -52,20 +94,31 @@ The CIO-Agent FAB++ system evaluates AI agents on financial analysis tasks using
 git clone https://github.com/yxc20089/AgentBusters.git
 cd AgentBusters
 
-# Create virtual environment and install dependencies
-uv venv
-source .venv/bin/activate
-uv pip install -e ".[dev]"
+# Option 1: Using uv (recommended)
+uv sync
+
+# Option 2: Using pip
+pip install -e ".[dev]"
 ```
 
-### Running the Green Agent (Evaluator)
+### Running the Green Agent (A2A Server for AgentBeats)
+
+```bash
+# Start A2A server (AgentBeats compatible)
+py -3.13 src/cio_agent/a2a_server.py --host 0.0.0.0 --port 9009
+
+# With custom card URL
+py -3.13 src/cio_agent/a2a_server.py --host 0.0.0.0 --port 9009 --card-url https://your-domain.com/
+```
+
+### Running the Green Agent (CLI for local testing)
 
 ```bash
 # List available tasks
 cio-agent list-tasks
 
 # Run evaluation on a specific task
-cio-agent evaluate --task-id FAB_001 --purple-endpoint http://localhost:8001
+cio-agent evaluate --task-id FAB_001 --purple-endpoint http://localhost:9010
 
 # Run the NVIDIA Q3 FY2026 test
 python scripts/test_nvidia.py
@@ -77,14 +130,11 @@ python scripts/test_nvidia.py
 # Start the A2A server
 purple-agent serve --host 0.0.0.0 --port 8001
 
+# Or use the simple test agent
+py -3.13 src/simple_purple_agent.py --host 0.0.0.0 --port 9010
+
 # Or run a direct analysis
 purple-agent analyze "Did NVIDIA beat or miss Q3 FY2026 expectations?" --ticker NVDA
-
-# Get stock information
-purple-agent info NVDA
-
-# Display the Agent Card
-purple-agent card
 ```
 
 ## MCP Server Configuration
@@ -107,70 +157,36 @@ export MCP_SANDBOX_URL=http://localhost:8003
 
 ## Docker Deployment
 
-MCP servers build from `src/mcp_servers/*.py` using the provided Dockerfiles.
+### Green Agent (AgentBeats Compatible)
 
-### Build images (once)
 ```bash
+# Build
+docker build -f Dockerfile.green -t cio-agent-green .
+
+# Run
+docker run -p 9009:9009 cio-agent-green --host 0.0.0.0 --port 9009
+
+# With API keys
+docker run -p 9009:9009 -e OPENAI_API_KEY=sk-xxx cio-agent-green --host 0.0.0.0
+```
+
+### Full Stack (MCP + Purple + Green)
+
+```bash
+# Build all images
 docker compose build
-# After code changes, rebuild without cache to pick up source edits:
-docker compose build --no-cache
-# Build specific services (common set):
-# docker compose build sec-edgar-mcp yahoo-finance-mcp mcp-sandbox purple-agent cio-agent
-# Without cache:
-# docker compose build --no-cache sec-edgar-mcp yahoo-finance-mcp mcp-sandbox purple-agent cio-agent
-```
 
-### Start MCP + Purple (background)
-```bash
+# Start services
 docker compose up -d
-```
-External ports (default compose): Purple `8010->8001`, EDGAR `8001->8000`, YFinance `8002->8000`, Sandbox `8003->8000`.
 
-Check the status
-```bash
+# Check status
 docker ps --filter "name=fab-plus"
-```
 
-### One-shot CSV batch run (headless)
-Calls Purple `/analyze` endpoint. The `--purple-endpoint` flag is required.
-```bash
-docker compose run --rm --user root cio-agent sh -c "python -m scripts.run_csv_eval --dataset-path /app/data/public.csv --simulation-date 2024-12-31 --difficulty medium --output /data/results/summary.json --purple-endpoint http://fab-plus-purple-agent:8001 && cat /data/results/summary.json"
-```
-
-Persist results to host:
-```bash
-mkdir -p results
-docker compose run --rm --user root -v ${PWD}/results:/data/results cio-agent \
-  python -m scripts.run_csv_eval \
-    --dataset-path /app/data/public.csv \
-    --simulation-date 2024-12-31 \
-    --difficulty medium \
-    --output /data/results/summary.json \
-    --purple-endpoint http://fab-plus-purple-agent:8001
-cat results/summary.json
-```
-
-Options:
-- `--difficulty` repeatable filter (easy/medium/hard/expert)
-- `--limit N` cap rows
-- `--seed` fix randomness (ticker/year substitution)
-- `--no-debate` skip debate phase
-- `--purple-endpoint` (required) call Purple `/analyze` (e.g., `http://fab-plus-purple-agent:8001`)
-- `--output` target JSON; if `/data/results` not writable, use `--user root` or `/tmp/summary.json`
-
-### Green Agent single-task via Purple
-Purple must be running. From compose network:
-```bash
-docker compose run --rm --no-deps cio-agent \
-  cio-agent evaluate --task-id FAB_050 --date 2024-01-01 --output summary \
-  --purple-endpoint http://fab-plus-purple-agent:8001
-```
-From host to Purple: `--purple-endpoint http://localhost:8010`
-
-### Stop services
-```bash
+# Stop services
 docker compose down
 ```
+
+External ports (default compose): Purple `8010->8001`, EDGAR `8001->8000`, YFinance `8002->8000`, Sandbox `8003->8000`.
 
 ## Configuration
 
@@ -186,68 +202,50 @@ docker compose down
 | `MCP_YFINANCE_URL` | Yahoo Finance MCP server URL | `http://localhost:8002` |
 | `MCP_SANDBOX_URL` | Sandbox MCP server URL | `http://localhost:8003` |
 
-### Purple Agent Options
-
-```bash
-# Run with simulation date (temporal locking)
-purple-agent serve --simulation-date 2025-11-20
-
-# Run without MCP (direct API access - for testing)
-# Set USE_MCP=false in code or use direct APIs
-```
-
 ## Project Structure
 
 ```
 AgentBusters/
 ├── src/
 │   ├── cio_agent/           # Green Agent (Evaluator)
+│   │   ├── a2a_server.py    # A2A server entry point (AgentBeats)
+│   │   ├── green_executor.py # A2A protocol executor
+│   │   ├── green_agent.py   # FAB++ evaluation logic
+│   │   ├── messenger.py     # A2A messaging utilities
 │   │   ├── models.py        # Core data models
 │   │   ├── evaluator.py     # Comprehensive evaluator
 │   │   ├── debate.py        # Adversarial debate manager
 │   │   ├── task_generator.py # Dynamic task generation
-│   │   ├── orchestrator.py  # A2A orchestrator
-│   │   ├── cli.py           # CLI interface
-│   │   ├── alphavantage.py  # AlphaVantage API client
-│   │   ├── financial_lake.py # Local financial data storage
-│   │   ├── synthetic_generator.py # Synthetic question generation
-│   │   └── verifier.py      # Question verification
-│   │
-│   ├── purple_agent/        # Purple Agent (Finance Analyst)
-│   │   ├── agent.py         # Main agent class
-│   │   ├── executor.py      # A2A executor implementation
-│   │   ├── card.py          # Agent Card definition
-│   │   ├── tools.py         # Direct API tools (fallback)
-│   │   ├── mcp_tools.py     # MCP-based tools
-│   │   ├── server.py        # A2A FastAPI server
 │   │   └── cli.py           # CLI interface
 │   │
-│   ├── mcp_clients/         # MCP client wrappers
-│   │   ├── edgar.py         # SEC EDGAR MCP client
-│   │   ├── yahoo_finance.py # Yahoo Finance MCP client
-│   │   └── sandbox.py       # Python Sandbox MCP client
+│   ├── purple_agent/        # Purple Agent (Finance Analyst)
+│   │   ├── server.py        # A2A FastAPI server
+│   │   ├── executor.py      # A2A executor implementation
+│   │   ├── agent.py         # Main agent class
+│   │   └── cli.py           # CLI interface
 │   │
-│   ├── mcp_servers/         # Actual MCP servers (FastMCP)
-│   │   ├── sec_edgar.py     # SEC EDGAR server (edgartools)
-│   │   ├── yahoo_finance.py # Yahoo Finance server (yfinance)
+│   ├── simple_purple_agent.py # Simple test Purple Agent
+│   │
+│   ├── mcp_servers/         # MCP servers (FastMCP)
+│   │   ├── sec_edgar.py     # SEC EDGAR server
+│   │   ├── yahoo_finance.py # Yahoo Finance server
 │   │   └── sandbox.py       # Python execution sandbox
 │   │
 │   └── evaluators/          # Evaluation components
 │       ├── macro.py         # Macro thesis evaluator
 │       ├── fundamental.py   # Fundamental analysis evaluator
-│       └── cost_tracker.py  # Cost tracking
+│       └── execution.py     # Execution quality evaluator
 │
 ├── tests/
-│   ├── test_evaluator.py    # Unit tests
+│   ├── test_a2a_green.py    # A2A conformance tests
 │   ├── test_e2e.py          # E2E tests with real NVIDIA data
 │   └── test_purple_agent.py # Purple Agent tests
 │
-├── scripts/
-│   ├── test_nvidia.py       # NVIDIA Q3 FY2026 demo
-│   └── run_demo.py          # Full pipeline demo
+├── .github/workflows/
+│   └── test-and-publish-green.yml  # CI/CD for Green Agent
 │
-├── docker-compose.yml       # Full stack deployment
-├── Dockerfile               # Green Agent container
+├── Dockerfile.green         # Green Agent container (AgentBeats)
+├── Dockerfile               # Legacy Green Agent container
 ├── Dockerfile.purple        # Purple Agent container
 └── pyproject.toml           # Project configuration
 ```
@@ -266,72 +264,27 @@ Where:
 - **Cost**: Total USD cost of LLM and tool calls
 - **LookaheadPenalty**: Penalty for temporal violations (accessing future data)
 
-## Synthetic Benchmark Generation
-
-The system includes a **Generator-Verifier-Refiner** architecture for creating synthetic FAB-style questions using AlphaVantage as the ground truth substrate.
-
-### Setup
-
-1. Get a free API key from [AlphaVantage](https://www.alphavantage.co/support/#api-key)
-2. Add to `.env`:
-   ```bash
-   ALPHAVANTAGE_API_KEY=your_api_key_here
-   ```
-
-### CLI Commands
-
-```bash
-# Harvest financial data into local cache (50 tickers)
-cio-agent harvest --tickers "AAPL,MSFT,GOOGL"
-
-# Check what data is available
-cio-agent lake-status
-
-# Generate synthetic benchmark questions
-cio-agent generate-synthetic --count 100 --output questions.json
-
-# Verify questions for solvability
-cio-agent verify-questions questions.json --output report.json
-```
-
-### Category Coverage
-
-The generator creates questions across all 9 FAB categories:
-
-| Category | Weight | Description |
-|----------|--------|-------------|
-| Quantitative Retrieval | 19% | Extract specific numerical values |
-| Qualitative Retrieval | 18% | Extract text descriptions, risk factors |
-| Numerical Reasoning | 15% | Margins, growth rates, CAGR |
-| Beat or Miss | 13% | EPS vs analyst estimates |
-| Complex Retrieval | 10% | Multi-document synthesis |
-| Adjustments | 8% | EBITDA reconciliation |
-| Trends | 7% | Multi-year longitudinal analysis |
-| Financial Modeling | 9% | M&A firepower, DCF |
-| Market Analysis | 6% | Cross-company comparisons |
-
-### Architecture
-
-```
-AlphaVantage API → Financial Lake → Synthetic Generator → Verifier → Questions
-                                           ↓
-                                       Refiner (for ambiguous questions)
-```
-
 ## Testing
 
 ```bash
 # Run all tests
-python -m pytest tests/ -v
+py -3.13 -m pytest tests/ -v
 
-# Run specific test file
-python -m pytest tests/test_purple_agent.py -v
+# Run A2A conformance tests
+py -3.13 -m pytest tests/test_a2a_green.py -v --agent-url http://localhost:9009
 
 # Run with coverage
-python -m pytest tests/ --cov=src --cov-report=html
+py -3.13 -m pytest tests/ --cov=src --cov-report=html
 ```
 
 ## API Reference
+
+### Green Agent A2A Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/.well-known/agent.json` | GET | Agent Card (A2A discovery) |
+| `/` | POST | A2A JSON-RPC endpoint |
 
 ### Purple Agent A2A Endpoints
 
@@ -342,19 +295,11 @@ python -m pytest tests/ --cov=src --cov-report=html
 | `/analyze` | POST | Direct analysis (non-A2A) |
 | `/` | POST | A2A JSON-RPC endpoint |
 
-### Agent Card Skills
-
-1. **earnings_analysis** - Earnings beat/miss analysis
-2. **sec_filing_analysis** - SEC 10-K, 10-Q analysis
-3. **financial_ratio_calculation** - P/E, ROE, debt ratios
-4. **market_analysis** - Sector and macro trends
-5. **investment_recommendation** - Buy/hold/sell recommendations
-
 ## Competition Info
 
 This project is built for the [AgentBeats Finance Track](https://rdi.berkeley.edu/agentx-agentbeats):
 
-- **Phase 1** (Dec 2025): Green Agent submissions
+- **Phase 1** (Jan 15, 2026): Green Agent submissions
 - **Phase 2** (Feb 2026): Purple Agent submissions
 
 ## License
@@ -365,7 +310,7 @@ MIT License - see [LICENSE](LICENSE) for details.
 
 1. Fork the repository
 2. Create a feature branch
-3. Run tests: `python -m pytest tests/ -v`
+3. Run tests: `py -3.13 -m pytest tests/ -v`
 4. Submit a pull request
 
 ## Acknowledgments
@@ -373,3 +318,5 @@ MIT License - see [LICENSE](LICENSE) for details.
 - [AgentBeats Competition](https://rdi.berkeley.edu/agentx-agentbeats) by Berkeley RDI
 - [A2A Protocol](https://a2a-protocol.org/) by Google
 - [FAB Benchmark](https://github.com/financial-agent-benchmark/FAB) for task templates
+- [green-agent-template](https://github.com/RDI-Foundation/green-agent-template) for A2A implementation reference
+
