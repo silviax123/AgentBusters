@@ -146,6 +146,8 @@ def main():
     print(f"Using database task store: {database_url}")
     engine = create_async_engine(database_url)
     task_store = DatabaseTaskStore(engine)
+    # Note: DatabaseTaskStore automatically handles initialization (e.g., table creation)
+    # when the first task is saved. No explicit initialize() call is needed on startup.
     
     request_handler = DefaultRequestHandler(
         agent_executor=GreenAgentExecutor(synthetic_questions=synthetic_questions),

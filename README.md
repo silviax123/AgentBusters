@@ -487,7 +487,7 @@ The agents will automatically load `.env` on startup. Alternatively, you can use
 | `MCP_EDGAR_URL` | SEC EDGAR MCP server | `http://localhost:8101` |
 | `MCP_YFINANCE_URL` | Yahoo Finance MCP server | `http://localhost:8102` |
 | `MCP_SANDBOX_URL` | Sandbox MCP server | `http://localhost:8103` |
-| `DATABASE_URL` | SQLite database URL | `sqlite:///tasks.db` |
+| `DATABASE_URL` | SQLite database URL | `sqlite+aiosqlite:///tasks.db` |
 
 
 ## Project Structure
