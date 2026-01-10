@@ -78,12 +78,14 @@ class FinanceAgentExecutor(AgentExecutor):
             event_queue: Queue for publishing task events
         """
         task_id = context.message.task_id if context.message else "unknown"
+        context_id = context.message.context_id if context.message else "unknown"
         user_input = context.get_user_input()
 
         # Publish working status
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
                 task_id=task_id,
+                context_id=context_id,
                 status=TaskStatus(
                     state=TaskState.working,
                     message=Message(
@@ -112,6 +114,7 @@ class FinanceAgentExecutor(AgentExecutor):
 
             # Create response artifact
             artifact = Artifact(
+                artifact_id=uuid4().hex,
                 name="financial_analysis",
                 parts=[TextPart(text=analysis)],
             )
@@ -120,6 +123,7 @@ class FinanceAgentExecutor(AgentExecutor):
             await event_queue.enqueue_event(
                 TaskArtifactUpdateEvent(
                     task_id=task_id,
+                    context_id=context_id,
                     artifact=artifact,
                 )
             )
@@ -128,6 +132,7 @@ class FinanceAgentExecutor(AgentExecutor):
             await event_queue.enqueue_event(
                 TaskStatusUpdateEvent(
                     task_id=task_id,
+                    context_id=context_id,
                     status=TaskStatus(
                         state=TaskState.completed,
                         message=Message(
@@ -145,6 +150,7 @@ class FinanceAgentExecutor(AgentExecutor):
             await event_queue.enqueue_event(
                 TaskStatusUpdateEvent(
                     task_id=task_id,
+                    context_id=context_id,
                     status=TaskStatus(
                         state=TaskState.failed,
                         message=Message(
@@ -174,6 +180,7 @@ class FinanceAgentExecutor(AgentExecutor):
         await event_queue.enqueue_event(
             TaskStatusUpdateEvent(
                 task_id=task_id,
+                context_id=context.message.context_id if context.message else "unknown",
                 status=TaskStatus(
                     state=TaskState.canceled,
                     message=Message(

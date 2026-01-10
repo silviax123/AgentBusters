@@ -17,6 +17,7 @@ Rubric format (JSON array):
 
 import csv
 import json
+import ast
 import logging
 from enum import Enum
 from pathlib import Path
@@ -76,6 +77,45 @@ def _map_difficulty(expert_minutes: float) -> TaskDifficulty:
     return TaskDifficulty.EXPERT
 
 
+def _process_rubric_items(
+    data: list, row_index: int = -1
+) -> tuple[list[str], list[str]]:
+    """
+    Process a list of rubric items into required criteria and penalty conditions.
+    
+    This is a helper function used by _parse_rubric for both JSON and Python literal paths.
+    """
+    required_criteria: list[str] = []
+    penalty_conditions: list[str] = []
+    
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        crit = item.get("criteria")
+        if not crit:
+            continue
+
+        # Support both 'type' and 'operator' field names
+        criterion_type_str = item.get("type") or item.get("operator")
+        if not criterion_type_str:
+            # Treat items without type as 'required' by default
+            required_criteria.append(crit)
+            continue
+        
+        # Normalize operator mappings
+        if criterion_type_str in ("correctness", "required"):
+            required_criteria.append(crit)
+        elif criterion_type_str in ("contradiction", "penalty"):
+            penalty_conditions.append(crit)
+        else:
+            logger.warning(
+                f"Row {row_index}: Unknown rubric type '{criterion_type_str}'. "
+                f"Valid types: {[t.value for t in RubricCriterionType]}"
+            )
+    
+    return required_criteria, penalty_conditions
+
+
 def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
     """
     Parse rubric JSON into required criteria and penalty conditions.
@@ -92,39 +132,16 @@ def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
 
     try:
         data = json.loads(raw)
-        required_criteria: list[str] = []
-        penalty_conditions: list[str] = []
+        return _process_rubric_items(data, row_index)
 
-        for item in data:
-            crit = item.get("criteria")
-            if not crit:
-                continue
-
-            criterion_type_str = item.get("type")
-            if not criterion_type_str:
-                logger.warning(f"Row {row_index}: Missing 'type' field in rubric item. Skipping.")
-                continue
-
-            try:
-                criterion_type = RubricCriterionType(criterion_type_str)
-            except ValueError:
-                logger.warning(
-                    f"Row {row_index}: Unknown rubric type '{criterion_type_str}'. "
-                    f"Valid types: {[t.value for t in RubricCriterionType]}"
-                )
-                continue
-
-            # Categorize the criterion
-            if criterion_type == RubricCriterionType.REQUIRED:
-                required_criteria.append(crit)
-            elif criterion_type == RubricCriterionType.PENALTY:
-                penalty_conditions.append(crit)
-
-        return required_criteria, penalty_conditions
-
-    except json.JSONDecodeError as e:
-        logger.warning(f"Row {row_index}: Failed to parse rubric JSON: {e}. Using raw value.")
-        return [raw], []
+    except json.JSONDecodeError:
+        # Try Python literal syntax (single quotes) as fallback
+        try:
+            data = ast.literal_eval(raw)
+            return _process_rubric_items(data, row_index)
+        except (ValueError, SyntaxError):
+            # Final fallback: use raw string when Python literal parsing fails
+            return [raw], []
     except Exception as e:
         logger.warning(f"Row {row_index}: Unexpected error parsing rubric: {e}. Using raw value.")
         return [raw], []

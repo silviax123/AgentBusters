@@ -7,6 +7,7 @@ incoming requests from Green Agents (evaluators).
 
 import os
 import asyncio
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -17,9 +18,11 @@ from fastapi.responses import JSONResponse
 
 from a2a.server.apps.jsonrpc.fastapi_app import A2AFastAPIApplication
 from a2a.server.request_handlers.default_request_handler import DefaultRequestHandler
+from a2a.server.tasks import DatabaseTaskStore
 from a2a.server.tasks.inmemory_task_store import InMemoryTaskStore
 from a2a.server.events.in_memory_queue_manager import InMemoryQueueManager
-from a2a.types import AgentCard
+from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.exc import SQLAlchemyError
 
 from purple_agent.card import get_agent_card
 from purple_agent.executor import FinanceAgentExecutor
@@ -84,8 +87,16 @@ def create_app(
         simulation_date=simulation_date,
     )
 
-    # Create A2A infrastructure
-    task_store = InMemoryTaskStore()
+    # Create A2A infrastructure with persistent storage
+    logger = logging.getLogger(__name__)
+    database_url = os.getenv("PURPLE_DATABASE_URL", "sqlite+aiosqlite:///purple_tasks.db")
+    try:
+        engine = create_async_engine(database_url)
+        task_store = DatabaseTaskStore(engine)
+        logger.info(f"Using database task store: {database_url}")
+    except (SQLAlchemyError, ImportError) as e:
+        logger.warning(f"Failed to initialize database, falling back to in-memory: {e}")
+        task_store = InMemoryTaskStore()
     queue_manager = InMemoryQueueManager()
 
     request_handler = DefaultRequestHandler(

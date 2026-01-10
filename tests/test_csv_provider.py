@@ -91,11 +91,11 @@ class TestParseRubric:
         criteria, penalties = _parse_rubric(rubric)
         assert criteria == ["Valid"]
 
-    def test_missing_type_skipped(self):
-        """Items without type should be skipped."""
+    def test_missing_type_treated_as_required(self):
+        """Items without type should be treated as required (default behavior)."""
         rubric = '[{"criteria": "No type"}, {"type": "required", "criteria": "Has type"}]'
         criteria, penalties = _parse_rubric(rubric, row_index=0)
-        assert criteria == ["Has type"]
+        assert criteria == ["No type", "Has type"]
 
     def test_unknown_type_skipped(self):
         """Unknown type values should be skipped with warning."""

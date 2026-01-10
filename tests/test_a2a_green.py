@@ -52,7 +52,7 @@ def validate_event(event_data: dict) -> list[str]:
 # A2A messaging helpers
 async def send_text_message(text: str, url: str, context_id: str | None = None, streaming: bool = False):
     """Send a text message to an A2A agent."""
-    async with httpx.AsyncClient(timeout=30) as httpx_client:
+    async with httpx.AsyncClient(timeout=120) as httpx_client:  # 120s for LLM calls
         resolver = A2ACardResolver(httpx_client=httpx_client, base_url=url)
         agent_card = await resolver.get_agent_card()
         config = ClientConfig(httpx_client=httpx_client, streaming=streaming)

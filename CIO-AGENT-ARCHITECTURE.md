@@ -665,6 +665,16 @@ Alpha Score = (60 * 1.0) / (ln(1 + 1) * 1.0)
 
 **Key Insight**: Scenario 3 (efficient but mediocre) beats Scenario 2 (expensive excellence), incentivizing cost-effective solutions.
 
+### 4.6 Persistence Layer (New in v1.0)
+To ensure reliable evaluation over long periods, the CIO-Agent uses a persistent storage mechanism:
+
+- **Database**: SQLite (`tasks.db`)
+- **Persistence**: All task states, messages, and results are saved to disk.
+- **Resumability**: Evaluations can pick up where they left off if the server is restarted.
+- **Scalability**: Capable of handling hundreds of concurrent evaluation tasks without memory exhaustion.
+
+
+
 ---
 
 ## 5. CIO-Agent Orchestration Logic
