@@ -77,6 +77,45 @@ def _map_difficulty(expert_minutes: float) -> TaskDifficulty:
     return TaskDifficulty.EXPERT
 
 
+def _process_rubric_items(
+    data: list, row_index: int = -1
+) -> tuple[list[str], list[str]]:
+    """
+    Process a list of rubric items into required criteria and penalty conditions.
+    
+    This is a helper function used by _parse_rubric for both JSON and Python literal paths.
+    """
+    required_criteria: list[str] = []
+    penalty_conditions: list[str] = []
+    
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        crit = item.get("criteria")
+        if not crit:
+            continue
+
+        # Support both 'type' and 'operator' field names
+        criterion_type_str = item.get("type") or item.get("operator")
+        if not criterion_type_str:
+            # Treat items without type as 'required' by default
+            required_criteria.append(crit)
+            continue
+        
+        # Normalize operator mappings
+        if criterion_type_str in ("correctness", "required"):
+            required_criteria.append(crit)
+        elif criterion_type_str in ("contradiction", "penalty"):
+            penalty_conditions.append(crit)
+        else:
+            logger.warning(
+                f"Row {row_index}: Unknown rubric type '{criterion_type_str}'. "
+                f"Valid types: {[t.value for t in RubricCriterionType]}"
+            )
+    
+    return required_criteria, penalty_conditions
+
+
 def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
     """
     Parse rubric JSON into required criteria and penalty conditions.
@@ -93,69 +132,13 @@ def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
 
     try:
         data = json.loads(raw)
-        required_criteria: list[str] = []
-        penalty_conditions: list[str] = []
-
-        for item in data:
-            crit = item.get("criteria")
-            if not crit:
-                continue
-
-            # Support both 'type' and 'operator' field names
-            criterion_type_str = item.get("type") or item.get("operator")
-            if not criterion_type_str:
-                # Treat items without type as 'required' by default
-                required_criteria.append(crit)
-                continue
-            
-            # Map 'correctness' operator to 'required' type
-            if criterion_type_str == "correctness":
-                criterion_type_str = "required"
-            # Map 'contradiction' operator to 'penalty' type
-            elif criterion_type_str == "contradiction":
-                criterion_type_str = "penalty"
-
-            try:
-                criterion_type = RubricCriterionType(criterion_type_str)
-            except ValueError:
-                logger.warning(
-                    f"Row {row_index}: Unknown rubric type '{criterion_type_str}'. "
-                    f"Valid types: {[t.value for t in RubricCriterionType]}"
-                )
-                continue
-
-            # Categorize the criterion
-            if criterion_type == RubricCriterionType.REQUIRED:
-                required_criteria.append(crit)
-            elif criterion_type == RubricCriterionType.PENALTY:
-                penalty_conditions.append(crit)
-
-        return required_criteria, penalty_conditions
+        return _process_rubric_items(data, row_index)
 
     except json.JSONDecodeError:
         # Try Python literal syntax (single quotes) as fallback
         try:
             data = ast.literal_eval(raw)
-            required_criteria: list[str] = []
-            penalty_conditions: list[str] = []
-            for item in data:
-                if not isinstance(item, dict):
-                    continue
-                crit = item.get("criteria")
-                if not crit:
-                    continue
-                # Support both 'type' and 'operator' field names (same as JSON path)
-                criterion_type_str = item.get("type") or item.get("operator")
-                if not criterion_type_str:
-                    # Treat items without type as 'required' by default
-                    required_criteria.append(crit)
-                    continue
-                # Map operators to types (same as JSON path)
-                if criterion_type_str in ("correctness", "required"):
-                    required_criteria.append(crit)
-                elif criterion_type_str in ("contradiction", "penalty"):
-                    penalty_conditions.append(crit)
-            return required_criteria, penalty_conditions
+            return _process_rubric_items(data, row_index)
         except (ValueError, SyntaxError):
             # Final fallback: use raw string when Python literal parsing fails
             return [raw], []

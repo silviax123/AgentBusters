@@ -7,6 +7,7 @@ incoming requests from Green Agents (evaluators).
 
 import os
 import asyncio
+import logging
 from datetime import datetime
 from typing import Any
 
@@ -87,12 +88,14 @@ def create_app(
     )
 
     # Create A2A infrastructure with persistent storage
+    logger = logging.getLogger(__name__)
     database_url = os.getenv("PURPLE_DATABASE_URL", "sqlite+aiosqlite:///purple_tasks.db")
     try:
         engine = create_async_engine(database_url)
         task_store = DatabaseTaskStore(engine)
-    except (SQLAlchemyError, ImportError, OSError) as e:
-        print(f"WARNING: Failed to initialize database, falling back to in-memory: {e}")
+        logger.info(f"Using database task store: {database_url}")
+    except (SQLAlchemyError, ImportError) as e:
+        logger.warning(f"Failed to initialize database, falling back to in-memory: {e}")
         task_store = InMemoryTaskStore()
     queue_manager = InMemoryQueueManager()
 

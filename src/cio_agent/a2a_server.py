@@ -142,17 +142,18 @@ def main():
     )
 
     # Create request handler with executor
+    logger = logging.getLogger(__name__)
     database_url = os.getenv("DATABASE_URL", "sqlite+aiosqlite:///tasks.db")
-    print(f"Using database task store: {database_url}")
+    logger.info(f"Using database task store: {database_url}")
     try:
         engine = create_async_engine(database_url)
         task_store = DatabaseTaskStore(engine)
         # DatabaseTaskStore auto-creates tables on first use (lazy init).
         # For schema changes, use migrations. See README.md for backup procedures.
     except Exception as e:
-        print(f"ERROR: Failed to initialize database task store: {e}")
-        print("Check that DATABASE_URL is correctly formatted (e.g., sqlite+aiosqlite:///tasks.db)")
-        raise SystemExit(1)  # Equivalent to sys.exit(1), no import needed
+        logger.error(f"Failed to initialize database task store: {e}")
+        logger.error("Check that DATABASE_URL is correctly formatted (e.g., sqlite+aiosqlite:///tasks.db)")
+        raise SystemExit(1)
     
     request_handler = DefaultRequestHandler(
         agent_executor=GreenAgentExecutor(synthetic_questions=synthetic_questions),
