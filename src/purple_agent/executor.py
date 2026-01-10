@@ -114,6 +114,7 @@ class FinanceAgentExecutor(AgentExecutor):
 
             # Create response artifact
             artifact = Artifact(
+                artifact_id=uuid4().hex,
                 name="financial_analysis",
                 parts=[TextPart(text=analysis)],
             )

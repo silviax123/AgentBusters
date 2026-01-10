@@ -44,7 +44,7 @@ dependencies = [
     "fastapi>=0.100.0",
     "uvicorn>=0.38.0",
     "aiosqlite>=0.19.0",
-    "sqlalchemy>=2.0.0",  # Explicit dependency for create_async_engine
+    "sqlalchemy>=2.0.0",  # SQLAlchemy async support (sqlalchemy.ext.asyncio)
     # MCP Protocol Support
     "fastmcp>=2.0.0",
 ]

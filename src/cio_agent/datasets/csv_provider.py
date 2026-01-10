@@ -100,10 +100,19 @@ def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
             if not crit:
                 continue
 
-            criterion_type_str = item.get("type")
+            # Support both 'type' and 'operator' field names
+            criterion_type_str = item.get("type") or item.get("operator")
             if not criterion_type_str:
-                logger.warning(f"Row {row_index}: Missing 'type' field in rubric item. Skipping.")
+                # Treat items without type as 'required' by default
+                required_criteria.append(crit)
                 continue
+            
+            # Map 'correctness' operator to 'required' type
+            if criterion_type_str == "correctness":
+                criterion_type_str = "required"
+            # Map 'contradiction' operator to 'penalty' type
+            elif criterion_type_str == "contradiction":
+                criterion_type_str = "penalty"
 
             try:
                 criterion_type = RubricCriterionType(criterion_type_str)
@@ -122,9 +131,26 @@ def _parse_rubric(raw: str, row_index: int = -1) -> tuple[list[str], list[str]]:
 
         return required_criteria, penalty_conditions
 
-    except json.JSONDecodeError as e:
-        logger.warning(f"Row {row_index}: Failed to parse rubric JSON: {e}. Using raw value.")
-        return [raw], []
+    except json.JSONDecodeError:
+        # Try Python literal syntax (single quotes) as fallback
+        try:
+            import ast
+            data = ast.literal_eval(raw)
+            required_criteria: list[str] = []
+            penalty_conditions: list[str] = []
+            for item in data:
+                crit = item.get("criteria") if isinstance(item, dict) else None
+                if not crit:
+                    continue
+                criterion_type_str = item.get("type") if isinstance(item, dict) else None
+                if criterion_type_str == "required":
+                    required_criteria.append(crit)
+                elif criterion_type_str == "penalty":
+                    penalty_conditions.append(crit)
+            return required_criteria, penalty_conditions
+        except Exception:
+            # Final fallback: use raw string
+            return [raw], []
     except Exception as e:
         logger.warning(f"Row {row_index}: Unexpected error parsing rubric: {e}. Using raw value.")
         return [raw], []

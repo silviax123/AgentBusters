@@ -152,7 +152,7 @@ def main():
     except Exception as e:
         print(f"ERROR: Failed to initialize database task store: {e}")
         print("Check that DATABASE_URL is correctly formatted (e.g., sqlite+aiosqlite:///tasks.db)")
-        raise SystemExit(1)
+        raise SystemExit(1)  # Equivalent to sys.exit(1), no import needed
     
     request_handler = DefaultRequestHandler(
         agent_executor=GreenAgentExecutor(synthetic_questions=synthetic_questions),
