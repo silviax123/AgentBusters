@@ -13,7 +13,11 @@ from a2a.types import (
 )
 
 
-def get_agent_card(host: str = "localhost", port: int = 8101) -> AgentCard:
+def get_agent_card(
+    host: str = "localhost",
+    port: int = 8101,
+    card_url: str | None = None,
+) -> AgentCard:
     """
     Create the Agent Card for the Purple Finance Agent.
 
@@ -23,10 +27,14 @@ def get_agent_card(host: str = "localhost", port: int = 8101) -> AgentCard:
     Args:
         host: The hostname where the agent is running
         port: The port where the agent is listening
+        card_url: External URL for agent card (overrides host:port for container networking)
 
     Returns:
         AgentCard with full capability specification
     """
+    # Use card_url if provided, otherwise construct from host:port
+    url = card_url or f"http://{host}:{port}/"
+
     return AgentCard(
         name="Purple Finance Agent",
         description=(
@@ -34,7 +42,7 @@ def get_agent_card(host: str = "localhost", port: int = 8101) -> AgentCard:
             "Capable of analyzing earnings reports, SEC filings, financial ratios, "
             "and providing investment recommendations based on fundamental analysis."
         ),
-        url=f"http://{host}:{port}/",
+        url=url,
         version="1.0.0",
         provider=AgentProvider(
             organization="AgentBusters Team",

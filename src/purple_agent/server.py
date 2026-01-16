@@ -31,6 +31,7 @@ from purple_agent.executor import FinanceAgentExecutor
 def create_app(
     host: str = "localhost",
     port: int = 8101,
+    card_url: str | None = None,
     openai_api_key: str | None = None,
     anthropic_api_key: str | None = None,
     model: str | None = None,
@@ -42,6 +43,7 @@ def create_app(
     Args:
         host: Hostname for the server
         port: Port number
+        card_url: External URL for agent card (for container networking)
         openai_api_key: OpenAI API key for LLM calls
         anthropic_api_key: Anthropic API key for LLM calls
         model: Model identifier
@@ -80,7 +82,7 @@ def create_app(
             pass
 
     # Create agent components
-    agent_card = get_agent_card(host, port)
+    agent_card = get_agent_card(host, port, card_url=card_url)
     executor = FinanceAgentExecutor(
         llm_client=llm_client,
         model=default_model or "gpt-4o",

@@ -73,6 +73,7 @@ def serve(
     app_instance = create_app(
         host=host,
         port=port,
+        card_url=card_url,
         openai_api_key=openai_key,
         anthropic_api_key=anthropic_key,
         model=model,
