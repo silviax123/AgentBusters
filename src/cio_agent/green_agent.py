@@ -30,6 +30,7 @@ from cio_agent.eval_config import (
     LoadedExample,
     create_default_config,
 )
+from cio_agent.agentbeats_results import format_and_save_results
 
 # Dataset providers (for legacy single-dataset mode)
 from cio_agent.datasets import BizFinBenchProvider, CsvFinanceDatasetProvider
@@ -273,7 +274,32 @@ class GreenAgent:
                     },
                     "results": all_results,
                 }
-                
+
+                # Save AgentBeats-compliant results
+                import os
+                participant_id = request.config.get("participant_id", os.environ.get("AGENTBEATS_PURPLE_AGENT_ID", ""))
+                participant_name = request.config.get("participant_name", "purple_agent")
+                scenario_id = request.config.get("scenario_id", os.environ.get("AGENTBEATS_SCENARIO_ID", ""))
+                green_agent_id = request.config.get("green_agent_id", os.environ.get("AGENTBEATS_GREEN_AGENT_ID", ""))
+
+                try:
+                    results_path, leaderboard_path = format_and_save_results(
+                        participant_id=participant_id,
+                        participant_name=participant_name,
+                        evaluation_results=assessment_result,
+                        by_dataset=assessment_result.get("by_dataset"),
+                        scenario_id=scenario_id,
+                        green_agent_id=green_agent_id,
+                        results_dir="results",
+                    )
+                    import structlog
+                    logger = structlog.get_logger()
+                    logger.info("agentbeats_results_saved", results_path=str(results_path), leaderboard_path=str(leaderboard_path))
+                except Exception as e:
+                    import structlog
+                    logger = structlog.get_logger()
+                    logger.warning("agentbeats_results_save_failed", error=str(e))
+
                 # Report results as artifact
                 await updater.add_artifact(
                     parts=[
