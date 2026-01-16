@@ -909,9 +909,8 @@ class GreenAgent:
                     options_evaluator = OptionsEvaluator(task=fab_task)
                     options_score = await options_evaluator.score(agent_response)
 
-                    # Normalize score from 0-100 to 0-1
-                    normalized_score = options_score.score / 100.0
-
+                    # Options scores are already on 0-100 scale - don't normalize here
+                    # The unified scorer handles 0-100 scale for options
                     result = {
                         "example_id": example.example_id,
                         "dataset_type": example.dataset_type,
@@ -919,8 +918,7 @@ class GreenAgent:
                         "question": example.question[:200] + "..." if len(example.question) > 200 else example.question,
                         "expected": example.answer[:100] + "..." if len(example.answer) > 100 else example.answer,
                         "predicted": response[:200] + "..." if len(response) > 200 else response,
-                        "score": normalized_score,
-                        "score_raw": options_score.score,
+                        "score": options_score.score,  # Keep as 0-100 scale
                         "is_correct": options_score.score >= 70,  # 70/100 threshold
                         "pnl_accuracy": options_score.pnl_accuracy,
                         "greeks_accuracy": options_score.greeks_accuracy,
@@ -928,7 +926,7 @@ class GreenAgent:
                         "risk_management": options_score.risk_management,
                         "feedback": options_score.feedback,
                     }
-                    eval_result = type('obj', (object,), {'score': normalized_score})()
+                    eval_result = type('obj', (object,), {'score': options_score.score})()
 
                 else:
                     # Generic handling for unknown types
