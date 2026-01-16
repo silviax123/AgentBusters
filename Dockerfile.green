@@ -14,6 +14,7 @@ COPY --chown=agent:agent src src
 # Only small local data files needed for Options and CSV datasets
 # Note: PyTorch/sentence-transformers removed - using LLM for semantic similarity instead
 COPY --chown=agent:agent data/options data/options
+COPY --chown=agent:agent data/synthetic_questions data/synthetic_questions
 COPY --chown=agent:agent finance-agent/data/public.csv finance-agent/data/public.csv
 COPY --chown=agent:agent config/eval_config.yaml config/eval_config.yaml
 
