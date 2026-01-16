@@ -32,6 +32,7 @@ from cio_agent.eval_config import (
     create_default_config,
 )
 from cio_agent.agentbeats_results import format_and_save_results
+from cio_agent.unified_scoring import UnifiedScorer, ScoreSection, DATASET_SECTION_MAP
 
 # Dataset providers (for legacy single-dataset mode)
 from cio_agent.data_providers import BizFinBenchProvider, CsvFinanceDatasetProvider
@@ -257,42 +258,53 @@ class GreenAgent:
                     conduct_debate=conduct_debate,
                     updater=updater,
                 )
-                
-                # Calculate aggregate metrics
-                valid_results = [r for r in all_results if "error" not in r]
-                avg_score = sum(r.get("score", 0) for r in valid_results) / len(valid_results) if valid_results else 0.0
-                accuracy = sum(1 for r in valid_results if r.get("is_correct", False)) / len(valid_results) if valid_results else 0.0
-                
-                # Group by dataset
-                by_dataset = {}
-                for r in valid_results:
-                    ds = r.get("dataset_type", "unknown")
-                    if ds not in by_dataset:
-                        by_dataset[ds] = {"scores": [], "correct": 0}
-                    by_dataset[ds]["scores"].append(r.get("score", 0))
-                    if r.get("is_correct", False):
-                        by_dataset[ds]["correct"] += 1
-                
-                # Create assessment result
-                assessment_result = {
-                    "benchmark": f"FAB++ {self.eval_config.name}",
-                    "version": self.eval_config.version,
-                    "purple_agent": purple_agent_url,
-                    "config_summary": summary,
-                    "num_evaluated": len(all_results),
-                    "num_successful": len(valid_results),
-                    "average_score": round(avg_score, 4),
-                    "accuracy": round(accuracy, 4),
-                    "by_dataset": {
-                        ds: {
-                            "count": len(data["scores"]),
-                            "mean_score": round(sum(data["scores"]) / len(data["scores"]), 4) if data["scores"] else 0,
-                            "accuracy": round(data["correct"] / len(data["scores"]), 4) if data["scores"] else 0,
+
+                # Use unified scoring system
+                scorer = UnifiedScorer()
+                normalized_results = []
+
+                for r in all_results:
+                    if "error" in r:
+                        continue
+
+                    dataset_type = r.get("dataset_type", "unknown")
+                    raw_score = r.get("score", 0.0)
+                    is_correct = r.get("is_correct", False)
+
+                    # Extract sub-scores for options
+                    sub_scores = {}
+                    if dataset_type == "options":
+                        sub_scores = {
+                            "pnl_accuracy": r.get("pnl_accuracy", 0),
+                            "greeks_accuracy": r.get("greeks_accuracy", 0),
+                            "strategy_quality": r.get("strategy_quality", 0),
+                            "risk_management": r.get("risk_management", 0),
                         }
-                        for ds, data in by_dataset.items()
-                    },
-                    "results": all_results,
-                }
+
+                    normalized = scorer.create_normalized_result(
+                        task_id=r.get("example_id", ""),
+                        dataset_type=dataset_type,
+                        raw_score=raw_score,
+                        is_correct=is_correct,
+                        feedback=r.get("feedback", ""),
+                        sub_scores=sub_scores,
+                    )
+                    if normalized:
+                        normalized_results.append(normalized)
+
+                # Compute unified result
+                unified_result = scorer.compute_unified_result(
+                    task_results=normalized_results,
+                    purple_agent_url=purple_agent_url,
+                    conduct_debate=conduct_debate,
+                )
+
+                # Convert to dict for serialization
+                assessment_result = unified_result.to_dict()
+
+                # Add config summary for compatibility
+                assessment_result["config_summary"] = summary
+                assessment_result["results"] = all_results  # Keep detailed results
 
                 # Save AgentBeats-compliant results
                 participant_id = os.environ.get("AGENTBEATS_PURPLE_AGENT_ID", "")
@@ -305,7 +317,7 @@ class GreenAgent:
                         participant_id=participant_id,
                         participant_name=participant_name,
                         evaluation_results=assessment_result,
-                        by_dataset=assessment_result.get("by_dataset"),
+                        by_dataset=None,  # Unified result handles this differently
                         scenario_id=scenario_id,
                         green_agent_id=green_agent_id,
                         results_dir="results",
@@ -319,9 +331,14 @@ class GreenAgent:
                     logger.warning("agentbeats_results_save_failed", error=str(e))
 
                 # Report results as artifact
+                overall = unified_result.overall_score
+                section_summary = "\n".join(
+                    f"  {name}: {ss.score:.1f}/100 (weight: {ss.weight:.0%}, {ss.task_count} tasks)"
+                    for name, ss in unified_result.section_scores.items()
+                )
                 await updater.add_artifact(
                     parts=[
-                        Part(root=TextPart(text=f"FAB++ Multi-Dataset Evaluation Complete\n\nAverage Score: {avg_score:.4f}\nAccuracy: {accuracy:.2%}\n\nBy Dataset:\n" + "\n".join(f"  {ds}: {len(data['scores'])} examples, {data['correct']} correct" for ds, data in by_dataset.items()))),
+                        Part(root=TextPart(text=f"FAB++ Unified Evaluation Complete\n\nOverall Score: {overall.score:.1f}/100 (Grade: {overall.grade})\n\nSection Scores:\n{section_summary}")),
                         Part(root=DataPart(data=assessment_result)),
                     ],
                     name="evaluation_result",
