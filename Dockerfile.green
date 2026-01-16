@@ -15,6 +15,7 @@ COPY --chown=agent:agent src src
 # Note: PyTorch/sentence-transformers removed - using LLM for semantic similarity instead
 COPY --chown=agent:agent data/options data/options
 COPY --chown=agent:agent finance-agent/data/public.csv finance-agent/data/public.csv
+COPY --chown=agent:agent config/eval_config.yaml config/eval_config.yaml
 
 # Install dependencies with uv
 RUN \
@@ -23,5 +24,5 @@ RUN \
 
 # Entry point for the Green Agent A2A server
 ENTRYPOINT ["uv", "run", "src/cio_agent/a2a_server.py"]
-CMD ["--host", "0.0.0.0"]
+CMD ["--host", "0.0.0.0", "--eval-config", "config/eval_config.yaml"]
 EXPOSE 9109
