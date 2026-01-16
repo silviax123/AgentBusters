@@ -1,0 +1,34 @@
+name: "FAB++ Multi-Dataset Evaluation"
+version: "1.0"
+datasets:
+  - type: bizfinbench
+    path: data/BizFinBench.v2
+    task_types:
+      - event_logic_reasoning
+      - financial_quantitative_computation
+    languages:
+      - en
+    limit_per_task: 3
+    shuffle: true
+    weight: 1.0
+
+  - type: public_csv
+    path: finance-agent/data/public.csv
+    limit: 3
+    shuffle: true
+    weight: 1.0
+
+  - type: options
+    path: data/options/questions.json
+    categories: null  # All categories
+    limit: 4
+    shuffle: true
+    weight: 1.0
+
+sampling:
+  strategy: stratified
+  total_limit: 10
+  seed: 42
+
+debate: false
+timeout_seconds: 120

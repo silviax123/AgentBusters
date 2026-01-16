@@ -714,9 +714,9 @@ class GreenAgent:
                     timeout=self.eval_config.timeout_seconds if self.eval_config else 300,
                 )
                 
-                # Get appropriate evaluator
+                # Get appropriate evaluator (options handled specially below)
                 evaluator = self._evaluators.get(example.dataset_type)
-                if not evaluator:
+                if not evaluator and example.dataset_type != "options":
                     all_results.append({
                         "example_id": example.example_id,
                         "dataset_type": example.dataset_type,
@@ -725,7 +725,7 @@ class GreenAgent:
                         "is_correct": False,
                     })
                     continue
-                
+
                 # Evaluate based on dataset type
                 if example.dataset_type == "bizfinbench":
                     eval_result = evaluator.evaluate(
@@ -801,6 +801,7 @@ class GreenAgent:
                 elif example.dataset_type == "options":
                     # Options Alpha Challenge evaluation
                     from cio_agent.models import AgentResponse
+                    from datetime import datetime, timezone
 
                     # Map string category to TaskCategory enum
                     category_map = {
@@ -816,12 +817,18 @@ class GreenAgent:
                     }
                     task_category = category_map.get(example.category, TaskCategory.OPTIONS_PRICING)
 
+                    # Extract ticker from metadata if available
+                    ticker = example.metadata.get("ticker", "SPY")
+
                     # Create a FABTask for the evaluator
                     fab_task = FABTask(
-                        task_id=example.example_id,
+                        question_id=example.example_id,
                         category=task_category,
                         difficulty=TaskDifficulty.MEDIUM,
                         question=example.question,
+                        ticker=ticker,
+                        fiscal_year=2025,
+                        simulation_date=datetime.now(timezone.utc),
                         ground_truth=GroundTruth(
                             macro_thesis=example.answer,
                             key_themes=[example.category],
@@ -831,13 +838,15 @@ class GreenAgent:
 
                     # Create AgentResponse
                     agent_response = AgentResponse(
+                        agent_id="purple_agent",
+                        task_id=example.example_id,
                         analysis=response,
                         recommendation=self._extract_recommendation(response),
                     )
 
                     # Initialize OptionsEvaluator with the task
                     options_evaluator = OptionsEvaluator(task=fab_task)
-                    options_score = options_evaluator.evaluate(agent_response)
+                    options_score = await options_evaluator.score(agent_response)
 
                     # Normalize score from 0-100 to 0-1
                     normalized_score = options_score.score / 100.0
