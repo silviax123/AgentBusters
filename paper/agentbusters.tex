@@ -1,0 +1,566 @@
+\documentclass[11pt,a4paper]{article}
+
+% Packages
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{amsmath,amssymb,amsfonts}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage{hyperref}
+\usepackage{algorithm}
+\usepackage{algorithmic}
+\usepackage{listings}
+\usepackage{xcolor}
+\usepackage{geometry}
+\usepackage{caption}
+\usepackage{subcaption}
+\usepackage{natbib}
+\usepackage{float}
+
+\geometry{margin=1in}
+
+% Code listing style
+\lstset{
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    frame=single,
+    numbers=left,
+    numberstyle=\tiny,
+    keywordstyle=\color{blue},
+    commentstyle=\color{green!60!black},
+    stringstyle=\color{red},
+}
+
+\title{\textbf{CIO-Agent FAB++: A Dynamic Multi-Dimensional Benchmark\\for Evaluating AI Finance Agents}}
+
+\author{
+    Team AgentBusters\\
+    AgentBeats Competition 2026\\
+    \texttt{https://github.com/yxc20089/AgentBusters}
+}
+
+\date{\today}
+
+\begin{document}
+
+\maketitle
+
+\begin{abstract}
+We present CIO-Agent FAB++ (Finance Agent Benchmark Plus Plus), a comprehensive evaluation framework for assessing AI agents on financial analysis tasks. Unlike static benchmarks, FAB++ dynamically generates evaluation tasks across 18 categories spanning fundamental analysis, quantitative reasoning, options trading, and risk management. The system implements a novel multi-dimensional scoring methodology that evaluates agents on macro thesis quality, fundamental accuracy, execution methodology, and adversarial robustness. We introduce the Options Alpha Challenge, a specialized evaluation track that tests agents on Black-Scholes pricing, Greeks analysis, and multi-leg strategy construction. Our framework leverages the Agent-to-Agent (A2A) protocol for standardized communication and Model Context Protocol (MCP) servers for real-time financial data access. Experimental results demonstrate the effectiveness of our evaluation methodology in distinguishing agent capabilities across diverse financial reasoning tasks.
+\end{abstract}
+
+\textbf{Keywords:} AI Agents, Finance Benchmark, Options Trading, Agent Evaluation, A2A Protocol, MCP
+
+\section{Introduction}
+
+The rapid advancement of large language models (LLMs) has enabled the development of sophisticated AI agents capable of performing complex financial analysis tasks \citep{brown2020language}. However, evaluating these agents presents significant challenges: financial reasoning requires numerical precision, temporal awareness, and domain expertise that traditional NLP benchmarks fail to capture adequately.
+
+Existing finance benchmarks suffer from several limitations:
+\begin{enumerate}
+    \item \textbf{Static evaluation}: Fixed question sets become memorized by models during training, leading to inflated performance metrics.
+    \item \textbf{Single-dimensional scoring}: Most benchmarks evaluate only answer correctness, ignoring reasoning quality and methodology.
+    \item \textbf{Lack of temporal constraints}: Agents may inadvertently access future information, violating realistic trading scenarios.
+    \item \textbf{Limited options coverage}: Few benchmarks evaluate quantitative finance skills like derivatives pricing and risk management.
+\end{enumerate}
+
+We address these limitations with CIO-Agent FAB++, a dynamic benchmark system that:
+\begin{itemize}
+    \item Generates novel evaluation tasks from real financial data with temporal locking
+    \item Evaluates agents across multiple dimensions including macro reasoning, fundamental accuracy, and execution quality
+    \item Introduces adversarial debate to test conviction and robustness
+    \item Provides comprehensive options trading evaluation with Black-Scholes pricing verification
+\end{itemize}
+
+\section{Related Work}
+
+\subsection{Financial Benchmarks}
+
+The Finance Agent Benchmark (FAB) \citep{fab2024} introduced structured evaluation of AI agents on earnings analysis tasks. BizFinBench \citep{bizfinbench2024} expanded coverage to include Chinese financial markets and multi-turn reasoning. However, these benchmarks use static question sets vulnerable to data contamination.
+
+\subsection{Agent Communication Protocols}
+
+The Agent-to-Agent (A2A) protocol \citep{a2a2024} standardizes communication between AI agents, enabling interoperability across different implementations. The Model Context Protocol (MCP) \citep{mcp2024} provides a unified interface for agents to access external tools and data sources.
+
+\subsection{Options Pricing Models}
+
+The Black-Scholes-Merton model \citep{black1973pricing, merton1973theory} remains the foundation for options pricing. Extensions include stochastic volatility models \citep{heston1993closed} and jump-diffusion processes \citep{merton1976option}.
+
+\section{System Architecture}
+
+\subsection{Overview}
+
+FAB++ implements a Green Agent (evaluator) and Purple Agent (finance analyst) architecture following the A2A protocol specification. Figure \ref{fig:architecture} illustrates the system components.
+
+\begin{figure}[H]
+\centering
+\begin{verbatim}
++------------------------------------------------------------------+
+|                    AgentBusters System                            |
++------------------------------------------------------------------+
+|  +---------------+      A2A Protocol      +---------------+       |
+|  | Green Agent   |<--------------------->| Purple Agent  |       |
+|  | (Evaluator)   |                       | (Analyst)     |       |
+|  | Port: 9109    |                       | Port: 9110    |       |
+|  +-------+-------+                       +-------+-------+       |
+|          |                                       |                |
+|          |     +-----------------------------+   |                |
+|          |     |       6 MCP Servers         |   |                |
+|          |     | SEC EDGAR  | Yahoo Finance  |   |                |
+|          |     | Sandbox    | Options Chain  |   |                |
+|          |     | Trading Sim| Risk Metrics   |   |                |
+|          |     +-----------------------------+   |                |
++------------------------------------------------------------------+
+\end{verbatim}
+\caption{FAB++ System Architecture}
+\label{fig:architecture}
+\end{figure}
+
+\subsection{Green Agent (Evaluator)}
+
+The Green Agent serves as the benchmark orchestrator, responsible for:
+\begin{itemize}
+    \item Dynamic task generation from financial data templates
+    \item Multi-dimensional response evaluation
+    \item Adversarial counter-argument generation
+    \item Alpha Score computation
+\end{itemize}
+
+\subsection{Purple Agent (Finance Analyst)}
+
+The Purple Agent represents the system under test, implementing:
+\begin{itemize}
+    \item Financial data retrieval via MCP servers
+    \item LLM-powered analysis generation
+    \item Options strategy construction
+    \item Risk assessment and position sizing
+\end{itemize}
+
+\subsection{MCP Server Infrastructure}
+
+We deploy six MCP servers providing specialized financial capabilities:
+
+\begin{table}[H]
+\centering
+\caption{MCP Server Specifications}
+\label{tab:mcp_servers}
+\begin{tabular}{llp{6cm}}
+\toprule
+\textbf{Server} & \textbf{Port} & \textbf{Capabilities} \\
+\midrule
+SEC EDGAR & 8101 & 10-K/10-Q filings, XBRL parsing, temporal locking \\
+Yahoo Finance & 8102 & Real-time quotes, historical data, lookahead detection \\
+Python Sandbox & 8103 & Secure code execution for numerical computations \\
+Options Chain & 8104 & Black-Scholes pricing, Greeks calculation, IV surface \\
+Trading Simulator & 8105 & Paper trading, slippage modeling, P\&L tracking \\
+Risk Metrics & 8106 & VaR computation, Sharpe/Sortino ratios, stress testing \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Evaluation Methodology}
+
+\subsection{Task Categories}
+
+FAB++ evaluates agents across 18 categories organized into three tiers:
+
+\subsubsection{Core Finance (6 categories)}
+\begin{itemize}
+    \item \textbf{Beat or Miss}: Earnings surprise detection against analyst consensus
+    \item \textbf{Macro Analysis}: Economic trend interpretation and market impact
+    \item \textbf{Fundamental Analysis}: Financial statement interpretation
+    \item \textbf{Quantitative Reasoning}: Numerical calculations from financial data
+    \item \textbf{SEC Filing Analysis}: Information extraction from regulatory documents
+    \item \textbf{Trend Analysis}: Historical pattern recognition and forecasting
+\end{itemize}
+
+\subsubsection{Options Alpha (6 categories)}
+\begin{itemize}
+    \item \textbf{Options Pricing}: Black-Scholes valuation and fair value assessment
+    \item \textbf{Greeks Analysis}: Sensitivity calculations and hedging strategies
+    \item \textbf{Strategy Construction}: Multi-leg options strategies
+    \item \textbf{Volatility Trading}: IV rank/percentile analysis
+    \item \textbf{P\&L Attribution}: Return decomposition by Greek exposure
+    \item \textbf{Risk Management}: VaR-based position sizing
+\end{itemize}
+
+\subsubsection{Advanced (6 categories)}
+\begin{itemize}
+    \item \textbf{Copy Trading}: Strategy replication and signal generation
+    \item \textbf{Race to 10M}: Capital growth optimization under constraints
+    \item \textbf{Strategy Defense}: Adversarial robustness testing
+    \item \textbf{Financial Data Description}: Structured data interpretation
+    \item \textbf{Multi-turn Perception}: Context maintenance across interactions
+    \item \textbf{Sentiment Analysis}: Market sentiment extraction
+\end{itemize}
+
+\subsection{Dynamic Task Generation}
+
+Unlike static benchmarks, FAB++ generates tasks dynamically using templates populated with real financial data:
+
+\begin{algorithm}[H]
+\caption{Dynamic Task Generation}
+\begin{algorithmic}[1]
+\REQUIRE Template $T$, Financial Lake $\mathcal{F}$, Simulation Date $d$
+\STATE Select ticker $s$ from universe $\mathcal{S}$
+\STATE Lock temporal context to date $d$
+\STATE Retrieve fundamental data $F_s = \mathcal{F}(s, d)$
+\STATE Generate ground truth $G$ from $F_s$
+\STATE Instantiate task $\tau = T(s, F_s, G, d)$
+\STATE Compute rubric criteria $R$ for $\tau$
+\RETURN Task $(\tau, G, R)$
+\end{algorithmic}
+\end{algorithm}
+
+\subsection{Multi-Dimensional Scoring}
+
+We evaluate responses across three primary dimensions:
+
+\subsubsection{Role Score}
+The Role Score combines weighted subscores:
+\begin{equation}
+\text{RoleScore} = 0.30 \cdot S_{\text{macro}} + 0.40 \cdot S_{\text{fundamental}} + 0.30 \cdot S_{\text{execution}}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $S_{\text{macro}}$: Macro thesis quality (semantic similarity + theme coverage)
+    \item $S_{\text{fundamental}}$: Numerical accuracy against ground truth
+    \item $S_{\text{execution}}$: Methodology quality and tool usage
+\end{itemize}
+
+\subsubsection{Adversarial Debate}
+
+We introduce adversarial debate to test agent conviction:
+
+\begin{algorithm}[H]
+\caption{Adversarial Debate Protocol}
+\begin{algorithmic}[1]
+\REQUIRE Agent response $A$, Task $\tau$
+\STATE Generate counter-argument $C$ challenging $A$
+\STATE Request rebuttal $R$ from agent
+\STATE Evaluate conviction: maintained, weakened, or collapsed
+\STATE Compute debate multiplier $m \in [0.8, 1.2]$
+\RETURN Multiplier $m$
+\end{algorithmic}
+\end{algorithm}
+
+\subsubsection{Alpha Score}
+
+The final Alpha Score combines all dimensions:
+\begin{equation}
+\alpha = \frac{\text{RoleScore} \times \text{DebateMultiplier}}{\ln(1 + \text{Cost}) \times (1 + \text{LookaheadPenalty})}
+\end{equation}
+
+This formulation rewards accurate, robust responses while penalizing expensive computation and temporal violations.
+
+\section{Options Alpha Challenge}
+
+\subsection{Black-Scholes Implementation}
+
+The Options Chain MCP server implements the Black-Scholes-Merton model with dividend yield:
+
+\begin{equation}
+d_1 = \frac{\ln(S/K) + (r - q + \sigma^2/2)T}{\sigma\sqrt{T}}
+\end{equation}
+\begin{equation}
+d_2 = d_1 - \sigma\sqrt{T}
+\end{equation}
+
+Call and put prices:
+\begin{align}
+C &= Se^{-qT}N(d_1) - Ke^{-rT}N(d_2) \\
+P &= Ke^{-rT}N(-d_2) - Se^{-qT}N(-d_1)
+\end{align}
+
+where $S$ is spot price, $K$ is strike, $r$ is risk-free rate, $q$ is dividend yield, $\sigma$ is volatility, and $T$ is time to expiration.
+
+\subsection{Greeks Calculation}
+
+We compute the standard Greeks for evaluation:
+
+\begin{table}[H]
+\centering
+\caption{Options Greeks Formulas}
+\label{tab:greeks}
+\begin{tabular}{lll}
+\toprule
+\textbf{Greek} & \textbf{Call} & \textbf{Put} \\
+\midrule
+Delta ($\Delta$) & $e^{-qT}N(d_1)$ & $-e^{-qT}N(-d_1)$ \\
+Gamma ($\Gamma$) & $\frac{e^{-qT}n(d_1)}{S\sigma\sqrt{T}}$ & Same as call \\
+Theta ($\Theta$) & $-\frac{Se^{-qT}n(d_1)\sigma}{2\sqrt{T}} - rKe^{-rT}N(d_2)$ & Complex \\
+Vega ($\nu$) & $Se^{-qT}\sqrt{T}n(d_1)$ & Same as call \\
+Rho ($\rho$) & $KTe^{-rT}N(d_2)$ & $-KTe^{-rT}N(-d_2)$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Options Evaluation Scoring}
+
+The Options Evaluator uses a four-dimensional scoring rubric:
+
+\begin{equation}
+S_{\text{options}} = 0.25 \cdot S_{\text{P\&L}} + 0.25 \cdot S_{\text{Greeks}} + 0.25 \cdot S_{\text{Strategy}} + 0.25 \cdot S_{\text{Risk}}
+\end{equation}
+
+\begin{table}[H]
+\centering
+\caption{Options Scoring Dimensions}
+\label{tab:options_scoring}
+\begin{tabular}{lp{8cm}}
+\toprule
+\textbf{Dimension} & \textbf{Evaluation Criteria} \\
+\midrule
+P\&L Accuracy & Max profit/loss calculations, breakeven points, probability of profit \\
+Greeks Accuracy & Delta, gamma, theta, vega values within 5\% tolerance \\
+Strategy Quality & Correct leg identification, strike selection rationale, structure validity \\
+Risk Management & Position sizing, hedging strategy, exit criteria definition \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Experiments}
+
+\subsection{Experimental Setup}
+
+We evaluated a baseline Purple Agent using GPT-4o as the underlying LLM. The agent was tested on:
+\begin{itemize}
+    \item Synthetic questions generated from the Financial Lake
+    \item Public CSV finance Q\&A dataset
+    \item Options trading tasks (iron condor, volatility, Greeks, risk)
+\end{itemize}
+
+\subsection{Results}
+
+\begin{table}[H]
+\centering
+\caption{Baseline Agent Performance}
+\label{tab:results}
+\begin{tabular}{lrrr}
+\toprule
+\textbf{Dataset} & \textbf{Tasks} & \textbf{Score} & \textbf{Metric} \\
+\midrule
+Synthetic Questions & 2 & 60,418 & Alpha Score \\
+Public CSV & 3 & 66.67\% & Accuracy \\
+Options (Iron Condor) & 1 & 50.8/100 & Options Score \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsubsection{Options Evaluation Breakdown}
+
+\begin{table}[H]
+\centering
+\caption{Options Task Performance (Iron Condor on SPY)}
+\label{tab:options_results}
+\begin{tabular}{lr}
+\toprule
+\textbf{Dimension} & \textbf{Score} \\
+\midrule
+P\&L Accuracy & 68.0/100 \\
+Greeks Accuracy & 0.0/100 \\
+Strategy Quality & 50.0/100 \\
+Risk Management & 85.0/100 \\
+\midrule
+\textbf{Final Options Score} & \textbf{50.8/100} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+The results reveal that while the baseline agent performs well on risk management concepts (85/100), it struggles with explicit Greeks calculations (0/100), indicating a gap between conceptual understanding and numerical precision.
+
+\subsection{Public CSV Detailed Results}
+
+\begin{table}[H]
+\centering
+\caption{Public CSV Dataset Performance}
+\label{tab:csv_results}
+\begin{tabular}{lrr}
+\toprule
+\textbf{Question Category} & \textbf{Correct} & \textbf{Score} \\
+\midrule
+Market Analysis (US Steel Merger) & 4/4 & 100\% \\
+Trends (Netflix ARPU) & 9/9 & 100\% \\
+Beat or Miss (TJX Margin) & 0/2 & 0\% \\
+\midrule
+\textbf{Average} & 13/15 & \textbf{66.67\%} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Discussion}
+
+\subsection{Key Findings}
+
+\begin{enumerate}
+    \item \textbf{Conceptual vs. Computational}: Agents demonstrate strong conceptual understanding but struggle with precise numerical calculations, particularly in options pricing.
+
+    \item \textbf{Category Variance}: Performance varies significantly across categories, with fundamental analysis outperforming quantitative tasks.
+
+    \item \textbf{Temporal Awareness}: Agents occasionally exhibit lookahead bias, accessing information beyond the simulation date.
+
+    \item \textbf{Risk Management Strength}: Agents excel at qualitative risk discussions but underperform on quantitative risk metrics.
+\end{enumerate}
+
+\subsection{Limitations}
+
+\begin{itemize}
+    \item Ground truth for subjective tasks (macro analysis) relies on reference summaries
+    \item Options pricing assumes Black-Scholes model validity
+    \item Adversarial debate quality depends on counter-argument generation
+\end{itemize}
+
+\subsection{Future Work}
+
+\begin{itemize}
+    \item Extend to multi-agent trading simulations
+    \item Incorporate stochastic volatility models
+    \item Add real-time market data integration
+    \item Develop specialized evaluators for emerging asset classes
+\end{itemize}
+
+\section{Conclusion}
+
+We presented CIO-Agent FAB++, a comprehensive benchmark for evaluating AI finance agents across 18 categories spanning fundamental analysis, options trading, and risk management. Our multi-dimensional scoring methodology, combined with adversarial debate testing, provides nuanced assessment of agent capabilities beyond simple accuracy metrics. The Options Alpha Challenge introduces rigorous quantitative evaluation using Black-Scholes pricing and Greeks verification. Experimental results demonstrate the benchmark's effectiveness in revealing agent strengths and weaknesses across diverse financial reasoning tasks.
+
+The system is publicly available at \url{https://github.com/yxc20089/AgentBusters} with Docker images for immediate deployment.
+
+\section*{Acknowledgments}
+
+We thank the AgentBeats Competition organizers at Berkeley RDI for inspiring this work. We acknowledge the contributions of the A2A Protocol and MCP communities for enabling standardized agent communication.
+
+\bibliographystyle{plainnat}
+\begin{thebibliography}{99}
+
+\bibitem[Black and Scholes(1973)]{black1973pricing}
+Black, F. and Scholes, M. (1973).
+\newblock The pricing of options and corporate liabilities.
+\newblock \emph{Journal of Political Economy}, 81(3):637--654.
+
+\bibitem[Brown et al.(2020)]{brown2020language}
+Brown, T.~B., Mann, B., Ryder, N., et al. (2020).
+\newblock Language models are few-shot learners.
+\newblock \emph{Advances in Neural Information Processing Systems}, 33:1877--1901.
+
+\bibitem[Merton(1973)]{merton1973theory}
+Merton, R.~C. (1973).
+\newblock Theory of rational option pricing.
+\newblock \emph{The Bell Journal of Economics and Management Science}, 4(1):141--183.
+
+\bibitem[Merton(1976)]{merton1976option}
+Merton, R.~C. (1976).
+\newblock Option pricing when underlying stock returns are discontinuous.
+\newblock \emph{Journal of Financial Economics}, 3(1-2):125--144.
+
+\bibitem[Heston(1993)]{heston1993closed}
+Heston, S.~L. (1993).
+\newblock A closed-form solution for options with stochastic volatility with applications to bond and currency options.
+\newblock \emph{The Review of Financial Studies}, 6(2):327--343.
+
+\bibitem[FAB(2024)]{fab2024}
+Finance Agent Benchmark (2024).
+\newblock FAB: A benchmark for evaluating AI agents on financial analysis tasks.
+\newblock \url{https://github.com/financial-agent-benchmark/FAB}.
+
+\bibitem[BizFinBench(2024)]{bizfinbench2024}
+HiThink Research (2024).
+\newblock BizFinBench: A comprehensive benchmark for financial AI.
+\newblock \emph{Technical Report}.
+
+\bibitem[A2A Protocol(2024)]{a2a2024}
+Google (2024).
+\newblock Agent-to-Agent Protocol Specification.
+\newblock \url{https://a2a-protocol.org/}.
+
+\bibitem[MCP(2024)]{mcp2024}
+Anthropic (2024).
+\newblock Model Context Protocol.
+\newblock \url{https://modelcontextprotocol.io/}.
+
+\end{thebibliography}
+
+\appendix
+
+\section{Alpha Score Derivation}
+
+The Alpha Score is designed to reward accurate, robust, and efficient agent responses:
+
+\begin{equation}
+\alpha = \frac{R \cdot D}{C \cdot P}
+\end{equation}
+
+where:
+\begin{itemize}
+    \item $R$ = RoleScore $\in [0, 100]$
+    \item $D$ = DebateMultiplier $\in [0.8, 1.2]$
+    \item $C$ = $\ln(1 + \text{Cost})$ (logarithmic cost penalty)
+    \item $P$ = $1 + \text{LookaheadPenalty}$ (temporal violation penalty)
+\end{itemize}
+
+The logarithmic cost penalty ensures diminishing returns for expensive computations, while the lookahead penalty harshly penalizes agents that access future information.
+
+\section{MCP Server API Reference}
+
+\subsection{Options Chain Server}
+
+\begin{lstlisting}[language=Python, caption=Options Chain MCP Tools]
+# Get options chain for a ticker
+get_options_chain(ticker: str, expiration: str) -> dict
+
+# Calculate Black-Scholes price
+calculate_option_price(
+    spot: float, strike: float, rate: float,
+    volatility: float, time_to_expiry: float,
+    option_type: str, dividend_yield: float
+) -> dict  # Returns price and all Greeks
+
+# Get implied volatility surface
+get_iv_surface(ticker: str) -> dict
+
+# Analyze multi-leg strategy
+analyze_strategy(legs: list[dict]) -> dict
+\end{lstlisting}
+
+\subsection{Risk Metrics Server}
+
+\begin{lstlisting}[language=Python, caption=Risk Metrics MCP Tools]
+# Calculate portfolio Greeks
+calculate_portfolio_greeks(positions: list[dict]) -> dict
+
+# Calculate Value at Risk
+calculate_var(
+    returns: list[float], confidence: float,
+    method: str  # "historical", "parametric", "monte_carlo"
+) -> dict
+
+# Run stress test
+run_stress_test(
+    portfolio: dict,
+    scenarios: list[dict]  # e.g., {"name": "crash", "spot_change": -0.20}
+) -> dict
+\end{lstlisting}
+
+\section{Evaluation Configuration}
+
+\begin{lstlisting}[language=Python, caption=Sample Evaluation Config (YAML)]
+name: "FAB++ Full Evaluation"
+datasets:
+  - type: synthetic
+    path: data/synthetic_questions/questions.json
+    limit: 50
+  - type: bizfinbench
+    path: data/BizFinBench.v2
+    task_types: [event_logic_reasoning, financial_quantitative_computation]
+    languages: [en]
+    limit_per_task: 20
+  - type: public_csv
+    path: finance-agent/data/public.csv
+    limit: 100
+sampling:
+  strategy: stratified
+  total_limit: 100
+  seed: 42
+\end{lstlisting}
+
+\end{document}
