@@ -1,3 +1,7 @@
+<p align="center">
+  <img src="docs/agentbusters-logo.jpg" alt="AgentBusters Logo" width="200"/>
+</p>
+
 # AgentBusters - CIO-Agent FAB++ System
 
 A dynamic finance agent benchmark system for the [AgentBeats Competition](https://rdi.berkeley.edu/agentx-agentbeats). This project implements both **Green Agent** (Evaluator) and **Purple Agent** (Finance Analyst) using the A2A (Agent-to-Agent) protocol.
@@ -54,39 +58,61 @@ cp .env.example .env
 
 The CIO-Agent FAB++ system evaluates AI agents on financial analysis tasks using:
 
-- **FAB++ (Finance Agent Benchmark)**: Dynamic variant with 537 questions across 9 categories
-- **MCP Trinity**: SEC EDGAR, Yahoo Finance, and Python Sandbox servers
+- **FAB++ (Finance Agent Benchmark)**: Dynamic variant with 537+ questions across **18 categories**
+- **MCP Servers**: 6 servers for financial data, options pricing, and trading simulation
+- **Options Alpha Challenge**: Black-Scholes pricing, Greeks analysis, strategy construction
 - **Adversarial Debate**: Counter-argument generation to test conviction
 - **Alpha Score**: Comprehensive evaluation metric
+
+### Evaluation Categories
+
+**Core Finance (6 categories):**
+- Beat or Miss, Macro Analysis, Fundamental Analysis
+- Quantitative Reasoning, SEC Filing Analysis, Trend Analysis
+
+**Options Alpha (6 categories):**
+- Options Pricing, Greeks Analysis, Strategy Construction
+- Volatility Trading, P&L Attribution, Risk Management
+
+**Advanced (6 categories):**
+- Copy Trading, Race to 10M, Strategy Defense
+- Financial Data Description, Multi-turn Perception, Sentiment Analysis
 
 ### Architecture
 
 ```
-┌────────────────────────────────────────────────────────────────────────┐
-│                     AgentBusters System                                │
-├────────────────────────────────────────────────────────────────────────┤
-│                                                                        │
-│  ┌─────────────────┐         A2A Protocol        ┌───────────────┐     │
-│  │   Green Agent   │◄──────────────────────────► │  Purple Agent │     │
-│  │   (Evaluator)   │                             │   (Analyst)   │     │
-│  └───────┬─────────┘                             └───────┬───────┘     │
-│          │                                               │             │
-│    ┌─────┴─────┐                                   ┌─────┴─────┐       │
-│    │           │                                   │           │       │
-│    ▼           │                                   ▼           │       │
-│ ┌──────┐       │                              ┌──────┐         │       │
-│ │SQLite│       │                              │SQLite│         │       │
-│ │tasks │       │                              │purple│         │       │
-│ │ .db  │       │                              │_tasks│         │       │
-│ └──────┘       │                              └──────┘         │       │
-│                ▼                                               ▼       │
-│  ┌────────────────────── MCP Trinity ────────────────────────────┐     │
-│  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────────┐     │     │
-│  │  │  SEC EDGAR   │  │Yahoo Finance │  │  Python Sandbox  │     │     │
-│  │  └──────────────┘  └──────────────┘  └──────────────────┘     │     │
-│  └───────────────────────────────────────────────────────────────┘     │
-│                                                                        │
-└────────────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          AgentBusters System                                 │
+├─────────────────────────────────────────────────────────────────────────────┤
+│                                                                             │
+│  ┌─────────────────┐           A2A Protocol          ┌───────────────┐      │
+│  │   Green Agent   │◄──────────────────────────────► │  Purple Agent │      │
+│  │   (Evaluator)   │                                 │   (Analyst)   │      │
+│  │   Port: 9109    │                                 │  Port: 9110   │      │
+│  └───────┬─────────┘                                 └───────┬───────┘      │
+│          │                                                   │              │
+│          │  ┌──────────────────────────────────────────────┐ │              │
+│          │  │              6 MCP Servers                   │ │              │
+│          │  ├──────────────────────────────────────────────┤ │              │
+│          │  │  ┌────────────┐ ┌────────────┐ ┌──────────┐  │ │              │
+│          │  │  │ SEC EDGAR  │ │  Yahoo     │ │  Python  │  │ │              │
+│          │  │  │  :8101     │ │ Finance    │ │ Sandbox  │  │ │              │
+│          │  │  │            │ │  :8102     │ │  :8103   │  │ │              │
+│          │  │  └────────────┘ └────────────┘ └──────────┘  │ │              │
+│          │  │  ┌────────────┐ ┌────────────┐ ┌──────────┐  │ │              │
+│          │  │  │  Options   │ │  Trading   │ │   Risk   │  │ │              │
+│          │  │  │   Chain    │ │    Sim     │ │ Metrics  │  │ │              │
+│          │  │  │  :8104     │ │  :8105     │ │  :8106   │  │ │              │
+│          │  │  └────────────┘ └────────────┘ └──────────┘  │ │              │
+│          │  └──────────────────────────────────────────────┘ │              │
+│          │                                                   │              │
+│          ▼                                                   ▼              │
+│  ┌───────────────┐                               ┌───────────────┐          │
+│  │    SQLite     │                               │    SQLite     │          │
+│  │   tasks.db    │                               │ purple_tasks  │          │
+│  └───────────────┘                               └───────────────┘          │
+│                                                                             │
+└─────────────────────────────────────────────────────────────────────────────┘
 ```
 
 ## Quick Start
@@ -440,51 +466,79 @@ OPENAI_API_KEY=dummy
 LLM_MODEL=openai/gpt-oss-20b
 ```
 
-git clone https://github.com/yxc20089/AgentBusters.git
 ## MCP Server Configuration
 
-The Purple Agent connects to MCP servers for real financial data:
+The system uses 6 MCP servers for financial data and options trading:
 
-| Server | Default URL | Purpose |
-|--------|-------------|---------|
-| SEC EDGAR MCP | `http://localhost:8101` | SEC filings, XBRL data |
-| Yahoo Finance MCP | `http://localhost:8102` | Market data, statistics |
-| Sandbox MCP | `http://localhost:8103` | Python code execution |
+| Server | Port | Purpose |
+|--------|------|---------|
+| SEC EDGAR MCP | 8101 | SEC filings, XBRL data, temporal locking |
+| Yahoo Finance MCP | 8102 | Market data, statistics, lookahead detection |
+| Sandbox MCP | 8103 | Python code execution |
+| **Options Chain MCP** | 8104 | Black-Scholes pricing, Greeks, IV surface |
+| **Trading Sim MCP** | 8105 | Paper trading, slippage simulation, P&L |
+| **Risk Metrics MCP** | 8106 | VaR, Sharpe/Sortino, stress testing |
 
 Configure via environment variables or `.env` file:
 
-```bash
-export MCP_EDGAR_URL=http://localhost:8101
-export MCP_YFINANCE_URL=http://localhost:8102
-export MCP_SANDBOX_URL=http://localhost:8103
-```
-
-Or in `.env`:
 ```dotenv
+# Core MCP Servers
 MCP_EDGAR_URL=http://localhost:8101
 MCP_YFINANCE_URL=http://localhost:8102
 MCP_SANDBOX_URL=http://localhost:8103
+
+# Options Alpha MCP Servers
+MCP_OPTIONS_URL=http://localhost:8104
+MCP_TRADING_URL=http://localhost:8105
+MCP_RISK_URL=http://localhost:8106
 ```
-Tip: If you set `MCP_*` URLs, ensure the ports match your running servers (defaults: 8101/8102/8103). If unset, the Purple Agent falls back to in-process MCP servers.
+
+Tip: If MCP URLs are unset, the Purple Agent falls back to in-process MCP servers.
 
 ## Docker Deployment
 
-### Green Agent (AgentBeats Compatible)
+### Published Docker Images
+
+| Image | URL |
+|-------|-----|
+| Green Agent | `ghcr.io/yxc20089/agentbusters-green:latest` |
+| Purple Agent | `ghcr.io/yxc20089/agentbusters-purple:latest` |
+
+### Quick Start with Docker
 
 ```bash
-# Build
+# Pull and run Green Agent
+docker pull ghcr.io/yxc20089/agentbusters-green:latest
+docker run -p 9109:9109 ghcr.io/yxc20089/agentbusters-green:latest --host 0.0.0.0
+
+# Pull and run Purple Agent
+docker pull ghcr.io/yxc20089/agentbusters-purple:latest
+docker run -p 9110:9110 -e OPENAI_API_KEY=sk-xxx ghcr.io/yxc20089/agentbusters-purple:latest
+```
+
+### Full Stack with Docker Compose
+
+```bash
+# Start all services (6 MCP servers + Green + Purple agents)
+docker compose up -d
+
+# Check status
+docker compose ps
+
+# View logs
+docker compose logs -f green-agent purple-agent
+```
+
+### Building from Source
+
+```bash
+# Build Green Agent
 docker build -f Dockerfile.green -t cio-agent-green .
+docker run -p 9109:9109 cio-agent-green --host 0.0.0.0
 
-# Run
-docker run -p 9109:9109 cio-agent-green --host 0.0.0.0 --port 9109
-
-# With API keys
-docker run -p 9109:9109 -e OPENAI_API_KEY=sk-xxx cio-agent-green --host 0.0.0.0
-
-# Push to GitHub Container Registry (optional)
-docker tag cio-agent-green ghcr.io/your-org/cio-agent-green:latest
-docker push ghcr.io/your-org/cio-agent-green:latest
-# CI/CD: .github/workflows/test-and-publish-green.yml builds & publishes on push to main or tags
+# Build Purple Agent
+docker build -f Dockerfile.purple -t purple-agent .
+docker run -p 9110:9110 -e OPENAI_API_KEY=sk-xxx purple-agent
 ```
 
 ### Individual Service Build & Run
@@ -604,42 +658,77 @@ AgentBusters/
 │   │   ├── green_executor.py # A2A protocol executor
 │   │   ├── green_agent.py   # FAB++ evaluation logic
 │   │   ├── messenger.py     # A2A messaging utilities
-│   │   ├── models.py        # Core data models
+│   │   ├── models.py        # Core data models (18 TaskCategories)
 │   │   ├── evaluator.py     # Comprehensive evaluator
 │   │   ├── debate.py        # Adversarial debate manager
-│   │   ├── task_generator.py # Dynamic task generation
+│   │   ├── task_generator.py # Dynamic task generation (18 templates)
 │   │   └── cli.py           # CLI interface
 │   │
 │   ├── purple_agent/        # Purple Agent (Finance Analyst)
 │   │   ├── server.py        # A2A FastAPI server
-│   │   ├── executor.py      # A2A executor implementation
-│   │   ├── agent.py         # Main agent class
+│   │   ├── executor.py      # A2A executor (options support)
+│   │   ├── mcp_toolkit.py   # MCP client toolkit (21 methods)
 │   │   └── cli.py           # CLI interface
 │   │
-│   ├── simple_purple_agent.py # Simple test Purple Agent
-│   │
 │   ├── mcp_servers/         # MCP servers (FastMCP)
-│   │   ├── sec_edgar.py     # SEC EDGAR server
-│   │   ├── yahoo_finance.py # Yahoo Finance server
-│   │   └── sandbox.py       # Python execution sandbox
+│   │   ├── sec_edgar.py     # SEC EDGAR server (:8101)
+│   │   ├── yahoo_finance.py # Yahoo Finance server (:8102)
+│   │   ├── sandbox.py       # Python execution sandbox (:8103)
+│   │   ├── options_chain.py # Black-Scholes pricing (:8104)
+│   │   ├── trading_sim.py   # Paper trading simulator (:8105)
+│   │   └── risk_metrics.py  # VaR, Sharpe, stress tests (:8106)
 │   │
 │   └── evaluators/          # Evaluation components
 │       ├── macro.py         # Macro thesis evaluator
 │       ├── fundamental.py   # Fundamental analysis evaluator
-│       └── execution.py     # Execution quality evaluator
+│       ├── execution.py     # Execution quality evaluator
+│       └── options.py       # Options-specific evaluator (P&L, Greeks)
 │
-├── tests/
-│   ├── test_a2a_green.py    # A2A conformance tests
-│   ├── test_e2e.py          # E2E tests with real NVIDIA data
-│   └── test_purple_agent.py # Purple Agent tests
+├── scripts/
+│   ├── run_a2a_eval.py      # A2A evaluation trigger
+│   ├── run_options_demo.py  # Options Alpha Challenge demo
+│   └── run_csv_eval.py      # CSV dataset evaluation
 │
-├── .github/workflows/
-│   └── test-and-publish-green.yml  # CI/CD for Green Agent
+├── data/
+│   ├── synthetic_questions/ # Generated evaluation tasks
+│   ├── BizFinBench.v2/      # HiThink benchmark dataset
+│   └── financial_lake/      # Cached financial data
 │
-├── Dockerfile.green         # Green Agent container (AgentBeats)
-├── Dockerfile               # Legacy Green Agent container
+├── docs/
+│   └── ARCHITECTURE_OPTIONS.md  # Options system design
+│
+├── Dockerfile.green         # Green Agent container
 ├── Dockerfile.purple        # Purple Agent container
-└── pyproject.toml           # Project configuration
+├── docker-compose.yml       # Full stack deployment
+└── ABSTRACT.md              # Competition abstract
+```
+
+## Options Alpha Challenge
+
+The benchmark includes a comprehensive options trading evaluation:
+
+### Options Task Types
+- **Iron Condor**: Construct neutral strategies with defined risk
+- **Volatility Trading**: IV rank/percentile analysis
+- **Greeks Hedging**: Delta neutralization strategies
+- **Risk Management**: VaR-based position sizing
+
+### Options Evaluation Scoring
+| Dimension | Weight | Description |
+|-----------|--------|-------------|
+| P&L Accuracy | 25% | Profit/loss calculations |
+| Greeks Accuracy | 25% | Delta, gamma, theta, vega |
+| Strategy Quality | 25% | Structure and rationale |
+| Risk Management | 25% | Position sizing, hedging |
+
+### Running Options Demo
+
+```bash
+# Single task
+python scripts/run_options_demo.py --task iron_condor --ticker SPY
+
+# All task types
+python scripts/run_options_demo.py --task all --ticker SPY
 ```
 
 ## Alpha Score Formula
