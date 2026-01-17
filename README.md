@@ -34,7 +34,7 @@ python -m src.mcp_servers.sec_edgar --transport http --host 0.0.0.0 --port 8101
 python -m src.mcp_servers.yahoo_finance --transport http --host 0.0.0.0 --port 8102
 python -m src.mcp_servers.sandbox --transport http --host 0.0.0.0 --port 8103
 
-# Run the evaludation
+# Run the evaluation
 python scripts/run_a2a_eval.py --green-url http://127.0.0.1:9109 --purple-url http://127.0.0.1:9110 --num-tasks 25 -v -o results/eval_output.json
 # gpt 4o total score: 42.44
 
