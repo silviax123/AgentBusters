@@ -545,6 +545,13 @@ class ConfigurableDatasetLoader:
 
     def _load_crypto(self, config: "CryptoDatasetConfig") -> List[LoadedExample]:
         """Load crypto trading scenarios."""
+        import hashlib
+
+        # Check if using PostgreSQL with hidden windows
+        if config.pg_enabled and config.hidden_seed_config:
+            return self._load_crypto_from_postgres(config)
+
+        # Fall back to JSON-based loading
         scenario_root = prepare_crypto_scenarios(
             path=Path(config.path),
             remote_manifest=config.remote_manifest,
@@ -562,27 +569,131 @@ class ConfigurableDatasetLoader:
         )
 
         examples = []
-        for scenario in scenario_indices:
-            question = f"Crypto trading scenario: {scenario.name}"
-            if scenario.description:
-                question = f"{question} - {scenario.description}"
+        for idx, scenario in enumerate(scenario_indices):
+            # Generate anonymous scenario ID to avoid leaking time window info
+            anon_id = self._anonymize_scenario_id(scenario.scenario_id, idx)
+
+            # Generic question without revealing specific time periods
+            question = f"Crypto trading scenario {idx + 1}"
 
             examples.append(LoadedExample(
-                example_id=scenario.scenario_id,
+                example_id=anon_id,
                 question=question,
                 answer="",
                 dataset_type="crypto",
                 metadata={
-                    "scenario_id": scenario.scenario_id,
-                    "name": scenario.name,
-                    "description": scenario.description,
+                    "scenario_id": anon_id,
+                    "name": f"scenario_{idx + 1}",
+                    "description": "",  # Omit description to avoid leaking info
                     "data_path": str(scenario.data_path),
-                    "metadata": scenario.metadata,
+                    "metadata": {
+                        k: v for k, v in scenario.metadata.items()
+                        if k not in ("start", "end", "period", "name", "description")
+                    },
                     "max_steps": config.max_steps,
                     "stride": config.stride,
                     "evaluation": config.evaluation.model_dump(),
                 },
             ))
+
+        return examples
+
+    def _anonymize_scenario_id(self, original_id: str, index: int) -> str:
+        """Generate anonymous scenario ID from original."""
+        import hashlib
+        # Use seed from config if available for consistency
+        seed = self.config.sampling.seed or 42
+        text = f"{seed}|{original_id}|{index}"
+        digest = hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+        return f"eval_{digest}"
+
+    def _load_crypto_from_postgres(self, config: "CryptoDatasetConfig") -> List[LoadedExample]:
+        """Load crypto scenarios directly from PostgreSQL with hidden windows."""
+        from cio_agent.crypto_benchmark import PostgresMarketDataLoader
+        from cio_agent.hidden_windows import load_hidden_seed, select_evaluation_windows
+
+        master_seed = load_hidden_seed(config.hidden_seed_config)
+        if master_seed is None:
+            import logging
+            logging.warning(
+                f"Could not load hidden seed '{config.hidden_seed_config}'. "
+                "Falling back to JSON scenarios."
+            )
+            # Temporarily disable pg_enabled and recurse
+            config_copy = config.model_copy()
+            config_copy.pg_enabled = False
+            return self._load_crypto(config_copy)
+
+        # Create loader
+        loader = PostgresMarketDataLoader(
+            dsn=config.pg_dsn,
+            host=config.pg_host,
+            port=config.pg_port,
+            dbname=config.pg_dbname,
+            user=config.pg_user,
+            password=config.pg_password,
+            ohlcv_table=config.pg_ohlcv_table,
+            funding_table=config.pg_funding_table,
+        )
+
+        examples = []
+        try:
+            conn = loader._connect()
+
+            # Select windows using hidden seed
+            windows = select_evaluation_windows(
+                master_seed=master_seed,
+                window_count=config.window_count,
+                symbols=config.symbols,
+                date_range=(config.date_range_start, config.date_range_end),
+                min_bars=config.window_min_bars,
+                max_bars=config.window_max_bars,
+                conn=conn,
+                ohlcv_table=config.pg_ohlcv_table,
+            )
+
+            if config.limit:
+                windows = windows[:config.limit]
+
+            for idx, window in enumerate(windows):
+                from datetime import datetime
+
+                start_dt = datetime.fromisoformat(window["start"].replace("Z", "+00:00"))
+                end_dt = datetime.fromisoformat(window["end"].replace("Z", "+00:00"))
+
+                # Load market data
+                states = loader.load_window(
+                    symbol=window["symbol"],
+                    start=start_dt,
+                    end=end_dt,
+                    timeframe="1m",
+                )
+
+                if not states:
+                    continue
+
+                # Use anonymous scenario ID
+                anon_id = window["scenario_id"]
+
+                examples.append(LoadedExample(
+                    example_id=anon_id,
+                    question=f"Crypto trading scenario {idx + 1}",
+                    answer="",
+                    dataset_type="crypto",
+                    metadata={
+                        "scenario_id": anon_id,
+                        "name": f"scenario_{idx + 1}",
+                        "description": "",
+                        "symbol": window["symbol"],
+                        "market_states": states,  # Include states directly
+                        "max_steps": config.max_steps,
+                        "stride": config.stride,
+                        "evaluation": config.evaluation.model_dump(),
+                    },
+                ))
+
+        finally:
+            loader.close()
 
         return examples
 

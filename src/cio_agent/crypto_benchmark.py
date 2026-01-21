@@ -1349,15 +1349,25 @@ class CryptoTradingEvaluator:
         purple_agent_url: str,
         seed: int,
     ) -> dict[str, Any]:
-        data_path = Path(scenario_meta["data_path"])
         max_steps = scenario_meta.get("max_steps")
         stride = scenario_meta.get("stride", 1)
         timeframe = scenario_meta.get("metadata", {}).get("timeframe")
         config = CryptoEvaluationConfig.model_validate(scenario_meta.get("evaluation", {}))
 
-        states = load_market_states(data_path, max_steps=max_steps, stride=stride)
+        # Support inline market_states (from PostgreSQL mode) or file-based loading
+        if "market_states" in scenario_meta:
+            states = scenario_meta["market_states"]
+            if stride > 1:
+                states = states[::stride]
+            if max_steps:
+                states = states[:max_steps]
+        else:
+            data_path = Path(scenario_meta["data_path"])
+            states = load_market_states(data_path, max_steps=max_steps, stride=stride)
+
         if not states:
-            return {"error": f"No market states found in {data_path}"}
+            scenario_id = scenario_meta.get("scenario_id", "unknown")
+            return {"error": f"No market states found for scenario {scenario_id}"}
 
         if config.seed is not None:
             seed = config.seed
