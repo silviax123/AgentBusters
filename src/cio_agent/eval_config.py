@@ -61,13 +61,17 @@ class BizFinBenchDatasetConfig(BaseModel):
     @classmethod
     def expand_all_task_types(cls, v):
         if v == "all" or v == ["all"]:
+            # Valid task types from HiThink-Research/BizFinBench.v2
+            # Note: financial_report_analysis is only available in Chinese (cn)
             return [
+                "anomaly_information_tracing",
                 "event_logic_reasoning",
-                "user_sentiment_analysis",
+                "financial_data_description",
                 "financial_quantitative_computation",
-                "industry_chain_knowledge",
-                "financial_terminology_quiz",
-                "conterfactual",  # Note: spelling matches dataset
+                "user_sentiment_analysis",
+                "stock_price_predict",
+                "financial_multi_turn_perception",
+                "financial_report_analysis",  # cn only
             ]
         return v
 

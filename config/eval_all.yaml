@@ -6,17 +6,33 @@ name: "AgentBusters All Datasets Evaluation"
 version: "1.0"
 
 datasets:
+  # BizFinBench English
   - type: bizfinbench
-    path: data/BizFinBench.v2
     task_types:
+      - anomaly_information_tracing
       - event_logic_reasoning
-      - user_sentiment_analysis
+      - financial_data_description
       - financial_quantitative_computation
-      - industry_chain_knowledge
-      - financial_terminology_quiz
-    languages:
-      - en
-      - cn
+      - user_sentiment_analysis
+      - stock_price_predict
+      - financial_multi_turn_perception
+    languages: [en]
+    limit_per_task: 5
+    shuffle: false
+    weight: 1.0
+
+  # BizFinBench Chinese (includes financial_report_analysis)
+  - type: bizfinbench
+    task_types:
+      - anomaly_information_tracing
+      - event_logic_reasoning
+      - financial_data_description
+      # - financial_quantitative_computation  # JSON parse error in cn
+      - user_sentiment_analysis
+      - stock_price_predict
+      - financial_multi_turn_perception
+      - financial_report_analysis  # cn only
+    languages: [cn]
     limit_per_task: 5
     shuffle: false
     weight: 1.0
