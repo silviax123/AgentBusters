@@ -9,11 +9,20 @@ Uses in-process MCP servers for controlled competition environment.
 
 import asyncio
 import json
+import logging
 import os
 import re
 from datetime import datetime
 from typing import Any
 from uuid import uuid4
+
+# Configure logging for debugging tool calls
+logger = logging.getLogger("purple_agent.executor")
+logger.setLevel(logging.INFO)
+if not logger.handlers:
+    handler = logging.StreamHandler()
+    handler.setFormatter(logging.Formatter('%(asctime)s [%(name)s] %(levelname)s: %(message)s'))
+    logger.addHandler(handler)
 
 from a2a.server.agent_execution.agent_executor import AgentExecutor
 from a2a.server.agent_execution.context import RequestContext
@@ -271,6 +280,7 @@ Provide a comprehensive answer with specific data points."""
         ]
 
         tool_call_count = 0
+        logger.info(f"Starting tool loop for question: {user_input[:100]}...")
 
         while tool_call_count < self.MAX_TOOL_CALLS:
             try:
@@ -316,18 +326,29 @@ Provide a comprehensive answer with specific data points."""
                             except json.JSONDecodeError:
                                 tool_args = {}
 
+                            logger.info(f"Tool call #{tool_call_count}: {tool_name}({json.dumps(tool_args)[:200]})")
+
                             # Execute the tool
                             tool_result = await self._execute_tool(tool_name, tool_args)
+
+                            # Log result summary
+                            result_str = json.dumps(tool_result, default=str)
+                            if "error" in result_str.lower():
+                                logger.warning(f"Tool {tool_name} returned error: {result_str[:500]}")
+                            else:
+                                logger.info(f"Tool {tool_name} returned {len(result_str)} chars")
 
                             # Add tool result to messages
                             messages.append({
                                 "role": "tool",
                                 "tool_call_id": tool_call.id,
-                                "content": json.dumps(tool_result, default=str)[:8000]  # Truncate large results
+                                "content": result_str[:8000]  # Truncate large results
                             })
                     else:
                         # No tool calls, return the response
-                        return assistant_message.content or "Unable to generate analysis."
+                        final_response = assistant_message.content or "Unable to generate analysis."
+                        logger.info(f"Final response (no more tools): {len(final_response)} chars, preview: {final_response[:200]}...")
+                        return final_response
 
                 elif hasattr(self.llm_client, "messages"):
                     # Anthropic-style client - convert tools to Anthropic format
@@ -360,13 +381,21 @@ Provide a comprehensive answer with specific data points."""
                             tool_name = tool_use.name
                             tool_args = tool_use.input
 
+                            logger.info(f"Tool call #{tool_call_count}: {tool_name}({json.dumps(tool_args)[:200]})")
+
                             # Execute the tool
                             tool_result = await self._execute_tool(tool_name, tool_args)
+
+                            result_str = json.dumps(tool_result, default=str)
+                            if "error" in result_str.lower():
+                                logger.warning(f"Tool {tool_name} returned error: {result_str[:500]}")
+                            else:
+                                logger.info(f"Tool {tool_name} returned {len(result_str)} chars")
 
                             tool_results.append({
                                 "type": "tool_result",
                                 "tool_use_id": tool_use.id,
-                                "content": json.dumps(tool_result, default=str)[:8000]
+                                "content": result_str[:8000]
                             })
 
                         messages.append({
@@ -376,15 +405,19 @@ Provide a comprehensive answer with specific data points."""
                     else:
                         # No tool calls, extract text response
                         text_blocks = [b.text for b in response.content if hasattr(b, 'text')]
-                        return "\n".join(text_blocks) if text_blocks else "Unable to generate analysis."
+                        final_response = "\n".join(text_blocks) if text_blocks else "Unable to generate analysis."
+                        logger.info(f"Final response (no more tools): {len(final_response)} chars, preview: {final_response[:200]}...")
+                        return final_response
 
                 else:
                     return "Unsupported LLM client type."
 
             except Exception as e:
+                logger.error(f"Exception in tool loop: {type(e).__name__}: {str(e)}")
                 return f"Error during analysis: {str(e)}"
 
         # Hit max tool calls, return what we have
+        logger.warning(f"Max tool calls ({self.MAX_TOOL_CALLS}) reached without final answer")
         return "Analysis incomplete: maximum tool calls reached. Please refine your question."
 
     def _convert_tools_to_anthropic_format(self) -> list:
