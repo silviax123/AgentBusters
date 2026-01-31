@@ -5,11 +5,11 @@ Normalizes all evaluator outputs to 0-100 scale and computes
 a weighted overall score across sections.
 
 Sections and Weights:
-- Knowledge Retrieval (30%): bizfinbench, public_csv
-- Analytical Reasoning (35%): synthetic
-- Options Trading (35%): options
-- Crypto Trading (25%): crypto
-- GDPVal (25%): gdpval
+- Knowledge Retrieval (20%): bizfinbench, public_csv
+- Analytical Reasoning (20%): synthetic
+- Options Trading (20%): options
+- Crypto Trading (20%): crypto
+- Professional Tasks (20%): gdpval
 """
 
 from dataclasses import dataclass, field
