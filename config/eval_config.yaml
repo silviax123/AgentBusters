@@ -12,7 +12,7 @@ datasets:
     weight: 1.0
 
   - type: public_csv
-    path: "data/public.csv"
+    path: "finance-agent/data/public.csv"
     limit: 5
     shuffle: false
     weight: 1.0
