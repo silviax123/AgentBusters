@@ -11,12 +11,6 @@ datasets:
     shuffle: false
     weight: 1.0
 
-  - type: public_csv
-    path: "finance-agent/data/public.csv"
-    limit: 10
-    shuffle: false
-    weight: 1.0
-
   - type: options
     path: "data/options/questions.json"
     limit: 10
@@ -58,6 +52,13 @@ datasets:
         win_rate: 0.10
       meta_transforms:
         - identity
+
+  - type: gdpval
+    hf_dataset: "openai/gdpval"
+    limit: 10
+    shuffle: false
+    weight: 1.0
+    include_reference_files: false  # Keep responses concise
 
 sampling:
   strategy: stratified
