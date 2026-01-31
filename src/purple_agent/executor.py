@@ -32,6 +32,7 @@ from a2a.types import (
 
 # Import MCP toolkit for in-process MCP servers
 from purple_agent.mcp_toolkit import MCPToolkit
+from purple_agent.tools import TOOLS
 
 
 class FinanceAgentExecutor(AgentExecutor):
@@ -149,18 +150,8 @@ class FinanceAgentExecutor(AgentExecutor):
                 )
                 return
 
-            # Parse the task and extract relevant information (LLM + keyword fallback)
-            task_info = await self._parse_task(user_input)
-
-            # Gather financial data
-            financial_data = await self._gather_data(task_info)
-
-            # Generate analysis using LLM
-            analysis = await self._generate_analysis(
-                user_input=user_input,
-                task_info=task_info,
-                financial_data=financial_data,
-            )
+            # Use function calling agentic loop
+            analysis = await self._run_with_tools(user_input)
 
             # Create response artifact
             artifact = Artifact(
@@ -242,6 +233,292 @@ class FinanceAgentExecutor(AgentExecutor):
                 final=True,
             )
         )
+
+    # Maximum tool calls per request to prevent infinite loops
+    MAX_TOOL_CALLS = 15
+
+    async def _run_with_tools(self, user_input: str) -> str:
+        """
+        Run the agent with function calling, letting the LLM decide which tools to use.
+
+        Args:
+            user_input: The user's question
+
+        Returns:
+            Final analysis response
+        """
+        if self.llm_client is None:
+            return "LLM client not configured. Cannot perform analysis."
+
+        system_prompt = """You are an expert financial analyst with access to various tools for financial data.
+
+Your task is to answer the user's question accurately using the available tools.
+
+IMPORTANT GUIDELINES:
+1. Use web_search or search_financial_news for recent data like earnings, guidance, ARPU, or any metrics that change quarterly
+2. Use get_quote, get_financials for current stock data
+3. Use get_filing, get_xbrl_financials for SEC filing data (10-K, 10-Q)
+4. Use calculate_financial_metric or execute_python for calculations
+5. For options analysis, use the options tools
+6. Always cite specific numbers and sources in your answer
+7. If you cannot find the data, say so clearly
+
+Provide a comprehensive answer with specific data points."""
+
+        messages = [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_input}
+        ]
+
+        tool_call_count = 0
+
+        while tool_call_count < self.MAX_TOOL_CALLS:
+            try:
+                if hasattr(self.llm_client, "chat"):
+                    # OpenAI-style client
+                    response = await asyncio.to_thread(
+                        lambda: self.llm_client.chat.completions.create(
+                            model=self.model,
+                            messages=messages,
+                            tools=TOOLS,
+                            tool_choice="auto",
+                            temperature=self.temperature,
+                        )
+                    )
+
+                    assistant_message = response.choices[0].message
+
+                    # Check if we have tool calls
+                    if assistant_message.tool_calls:
+                        # Add assistant message with tool calls to history
+                        messages.append({
+                            "role": "assistant",
+                            "content": assistant_message.content,
+                            "tool_calls": [
+                                {
+                                    "id": tc.id,
+                                    "type": "function",
+                                    "function": {
+                                        "name": tc.function.name,
+                                        "arguments": tc.function.arguments
+                                    }
+                                }
+                                for tc in assistant_message.tool_calls
+                            ]
+                        })
+
+                        # Execute each tool call
+                        for tool_call in assistant_message.tool_calls:
+                            tool_call_count += 1
+                            tool_name = tool_call.function.name
+                            try:
+                                tool_args = json.loads(tool_call.function.arguments)
+                            except json.JSONDecodeError:
+                                tool_args = {}
+
+                            # Execute the tool
+                            tool_result = await self._execute_tool(tool_name, tool_args)
+
+                            # Add tool result to messages
+                            messages.append({
+                                "role": "tool",
+                                "tool_call_id": tool_call.id,
+                                "content": json.dumps(tool_result, default=str)[:8000]  # Truncate large results
+                            })
+                    else:
+                        # No tool calls, return the response
+                        return assistant_message.content or "Unable to generate analysis."
+
+                elif hasattr(self.llm_client, "messages"):
+                    # Anthropic-style client - convert tools to Anthropic format
+                    anthropic_tools = self._convert_tools_to_anthropic_format()
+
+                    response = await asyncio.to_thread(
+                        lambda: self.llm_client.messages.create(
+                            model=self.model,
+                            max_tokens=4000,
+                            system=system_prompt,
+                            messages=messages[1:],  # Skip system message
+                            tools=anthropic_tools,
+                            temperature=self.temperature,
+                        )
+                    )
+
+                    # Check for tool use
+                    tool_use_blocks = [b for b in response.content if b.type == "tool_use"]
+
+                    if tool_use_blocks:
+                        # Add assistant response to history
+                        messages.append({
+                            "role": "assistant",
+                            "content": response.content
+                        })
+
+                        tool_results = []
+                        for tool_use in tool_use_blocks:
+                            tool_call_count += 1
+                            tool_name = tool_use.name
+                            tool_args = tool_use.input
+
+                            # Execute the tool
+                            tool_result = await self._execute_tool(tool_name, tool_args)
+
+                            tool_results.append({
+                                "type": "tool_result",
+                                "tool_use_id": tool_use.id,
+                                "content": json.dumps(tool_result, default=str)[:8000]
+                            })
+
+                        messages.append({
+                            "role": "user",
+                            "content": tool_results
+                        })
+                    else:
+                        # No tool calls, extract text response
+                        text_blocks = [b.text for b in response.content if hasattr(b, 'text')]
+                        return "\n".join(text_blocks) if text_blocks else "Unable to generate analysis."
+
+                else:
+                    return "Unsupported LLM client type."
+
+            except Exception as e:
+                return f"Error during analysis: {str(e)}"
+
+        # Hit max tool calls, return what we have
+        return "Analysis incomplete: maximum tool calls reached. Please refine your question."
+
+    def _convert_tools_to_anthropic_format(self) -> list:
+        """Convert OpenAI tool format to Anthropic format."""
+        anthropic_tools = []
+        for tool in TOOLS:
+            if tool.get("type") == "function":
+                func = tool["function"]
+                anthropic_tools.append({
+                    "name": func["name"],
+                    "description": func["description"],
+                    "input_schema": func["parameters"]
+                })
+        return anthropic_tools
+
+    async def _execute_tool(self, tool_name: str, args: dict) -> dict:
+        """
+        Execute a tool call and return the result.
+
+        Args:
+            tool_name: Name of the tool to execute
+            args: Arguments for the tool
+
+        Returns:
+            Tool execution result
+        """
+        try:
+            # Web search tools
+            if tool_name == "web_search":
+                return await self.toolkit.web_search(
+                    query=args.get("query", ""),
+                    max_results=args.get("max_results", 5)
+                )
+            elif tool_name == "search_financial_news":
+                return await self.toolkit.search_financial_news(
+                    company=args.get("company", ""),
+                    topic=args.get("topic", ""),
+                    max_results=args.get("max_results", 5)
+                )
+            elif tool_name == "search_earnings_info":
+                return await self.toolkit.search_earnings_info(
+                    ticker=args.get("ticker", ""),
+                    quarter=args.get("quarter", ""),
+                    year=args.get("year")
+                )
+            # Stock data tools
+            elif tool_name == "get_quote":
+                return await self.toolkit.get_quote(args.get("ticker", ""))
+            elif tool_name == "get_historical_prices":
+                return await self.toolkit.get_historical_prices(
+                    ticker=args.get("ticker", ""),
+                    period=args.get("period", "1mo"),
+                    interval=args.get("interval", "1d")
+                )
+            elif tool_name == "get_financials":
+                return await self.toolkit.get_financials(
+                    ticker=args.get("ticker", ""),
+                    statement_type=args.get("statement_type", "income")
+                )
+            elif tool_name == "get_key_statistics":
+                return await self.toolkit.get_key_statistics(args.get("ticker", ""))
+            elif tool_name == "get_analyst_estimates":
+                return await self.toolkit.get_analyst_estimates(args.get("ticker", ""))
+            elif tool_name == "get_earnings":
+                return await self.toolkit.get_earnings(args.get("ticker", ""))
+            # SEC EDGAR tools
+            elif tool_name == "get_company_info":
+                return await self.toolkit.get_company_info(args.get("ticker", ""))
+            elif tool_name == "get_filing":
+                return await self.toolkit.get_filing(
+                    ticker=args.get("ticker", ""),
+                    form_type=args.get("form_type", "10-K"),
+                    fiscal_year=args.get("fiscal_year")
+                )
+            elif tool_name == "get_xbrl_financials":
+                return await self.toolkit.get_xbrl_financials(
+                    ticker=args.get("ticker", ""),
+                    statement_type=args.get("statement_type", "income"),
+                    fiscal_year=args.get("fiscal_year")
+                )
+            # Calculation tools
+            elif tool_name == "execute_python":
+                return await self.toolkit.execute_python(
+                    code=args.get("code", ""),
+                    timeout=args.get("timeout", 30)
+                )
+            elif tool_name == "calculate_financial_metric":
+                return await self.toolkit.calculate_financial_metric(
+                    metric=args.get("metric", ""),
+                    values=args.get("values", {})
+                )
+            # Options tools
+            elif tool_name == "get_options_chain":
+                return await self.toolkit.get_options_chain(
+                    ticker=args.get("ticker", ""),
+                    expiration=args.get("expiration", "nearest"),
+                    min_strike=args.get("min_strike"),
+                    max_strike=args.get("max_strike")
+                )
+            elif tool_name == "calculate_option_price":
+                return await self.toolkit.calculate_option_price(
+                    spot_price=args.get("spot_price", 100),
+                    strike_price=args.get("strike_price", 100),
+                    days_to_expiry=args.get("days_to_expiry", 30),
+                    volatility=args.get("volatility", 0.25),
+                    option_type=args.get("option_type", "call"),
+                    risk_free_rate=args.get("risk_free_rate", 0.05)
+                )
+            elif tool_name == "get_volatility_analysis":
+                return await self.toolkit.get_volatility_analysis(
+                    ticker=args.get("ticker", ""),
+                    lookback_days=args.get("lookback_days", 30)
+                )
+            elif tool_name == "analyze_options_strategy":
+                return await self.toolkit.analyze_options_strategy(
+                    legs=args.get("legs", []),
+                    spot_price=args.get("spot_price", 100)
+                )
+            # Risk tools
+            elif tool_name == "calculate_portfolio_greeks":
+                return await self.toolkit.calculate_portfolio_greeks(
+                    positions=args.get("positions", [])
+                )
+            elif tool_name == "calculate_var":
+                return await self.toolkit.calculate_var(
+                    returns=args.get("returns", []),
+                    confidence_level=args.get("confidence_level", 0.95),
+                    portfolio_value=args.get("portfolio_value", 100000)
+                )
+            else:
+                return {"error": f"Unknown tool: {tool_name}"}
+
+        except Exception as e:
+            return {"error": f"Tool execution error: {str(e)}"}
 
     # Valid task types for classification
     VALID_TASK_TYPES = [
