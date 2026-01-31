@@ -11,6 +11,12 @@ datasets:
     shuffle: false
     weight: 1.0
 
+  - type: public_csv
+    path: "data/public.csv"
+    limit: 5
+    shuffle: false
+    weight: 1.0
+
   - type: options
     path: "data/options/questions.json"
     limit: 10
