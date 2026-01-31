@@ -40,7 +40,8 @@ RUN uv pip install --system \
     fastapi>=0.100.0 \
     uvicorn>=0.38.0 \
     sqlalchemy>=2.0.0 \
-    fastmcp>=2.0.0
+    fastmcp>=2.0.0 \
+    tavily-python>=0.3.0
 
 # Install the purple agent package
 RUN uv pip install --system -e . --no-deps

@@ -23,6 +23,9 @@ from mcp_servers.options_chain import create_options_chain_server
 from mcp_servers.trading_sim import create_trading_sim_server
 from mcp_servers.risk_metrics import create_risk_metrics_server
 
+# Web search MCP server
+from mcp_servers.web_search import create_web_search_server
+
 
 @dataclass
 class MCPToolMetrics:
@@ -88,6 +91,9 @@ class MCPToolkit:
         self._options_chain_server = create_options_chain_server(simulation_date=simulation_date)
         self._trading_sim_server = create_trading_sim_server(simulation_date=simulation_date)
         self._risk_metrics_server = create_risk_metrics_server()
+
+        # Web search MCP server (for earnings calls, news, guidance)
+        self._web_search_server = create_web_search_server()
 
         # Metrics
         self._metrics = MCPToolMetrics()
@@ -1099,6 +1105,109 @@ class MCPToolkit:
 
         elapsed = int((time.time() - start) * 1000)
         self._record_call("risk_metrics", "pnl_attribution", result, elapsed)
+        return result
+
+    # =========================================================================
+    # Web Search Tools
+    # =========================================================================
+
+    async def web_search(
+        self,
+        query: str,
+        search_depth: str = "basic",
+        max_results: int = 5,
+        include_answer: bool = True,
+    ) -> dict[str, Any]:
+        """
+        Search the web for information.
+
+        Args:
+            query: Search query string
+            search_depth: "basic" for fast results, "advanced" for comprehensive
+            max_results: Maximum number of results to return
+            include_answer: Whether to include AI-generated answer summary
+
+        Returns:
+            Search results with optional answer
+        """
+        import time
+        start = time.time()
+
+        tools = await self._web_search_server.get_tools()
+        search = tools["web_search"]
+        result = search.fn(
+            query=query,
+            search_depth=search_depth,
+            max_results=max_results,
+            include_answer=include_answer,
+        )
+
+        elapsed = int((time.time() - start) * 1000)
+        self._record_call("web_search", "web_search", result, elapsed)
+        return result
+
+    async def search_financial_news(
+        self,
+        company: str,
+        topic: str = "",
+        max_results: int = 5,
+    ) -> dict[str, Any]:
+        """
+        Search for recent financial news about a company.
+
+        Args:
+            company: Company name or ticker symbol
+            topic: Specific topic (e.g., "earnings", "guidance", "merger")
+            max_results: Maximum number of results
+
+        Returns:
+            Financial news search results
+        """
+        import time
+        start = time.time()
+
+        tools = await self._web_search_server.get_tools()
+        search = tools["search_financial_news"]
+        result = search.fn(
+            company=company,
+            topic=topic,
+            max_results=max_results,
+        )
+
+        elapsed = int((time.time() - start) * 1000)
+        self._record_call("web_search", "search_financial_news", result, elapsed)
+        return result
+
+    async def search_earnings_info(
+        self,
+        ticker: str,
+        quarter: str = "",
+        year: int | None = None,
+    ) -> dict[str, Any]:
+        """
+        Search for earnings call information and guidance.
+
+        Args:
+            ticker: Stock ticker symbol
+            quarter: Quarter (e.g., "Q1", "Q2", "Q3", "Q4")
+            year: Fiscal year
+
+        Returns:
+            Earnings information search results
+        """
+        import time
+        start = time.time()
+
+        tools = await self._web_search_server.get_tools()
+        search = tools["search_earnings_info"]
+        result = search.fn(
+            ticker=ticker,
+            quarter=quarter,
+            year=year,
+        )
+
+        elapsed = int((time.time() - start) * 1000)
+        self._record_call("web_search", "search_earnings_info", result, elapsed)
         return result
 
     # =========================================================================

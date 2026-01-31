@@ -48,6 +48,8 @@ dependencies = [
     "fastmcp>=2.0.0",
     # HuggingFace datasets for dynamic benchmark retrieval
     "datasets>=2.14.0",
+    # Tavily for web search MCP tools
+    "tavily-python>=0.3.0",
 ]
 
 [project.optional-dependencies]
