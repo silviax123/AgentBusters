@@ -5,10 +5,11 @@ Normalizes all evaluator outputs to 0-100 scale and computes
 a weighted overall score across sections.
 
 Sections and Weights:
-- Knowledge Retrieval (30%): bizfinbench, public_csv
-- Analytical Reasoning (35%): synthetic
-- Options Trading (35%): options
+- Knowledge Retrieval (20%): bizfinbench, public_csv
+- Analytical Reasoning (20%): synthetic
+- Options Trading (20%): options
 - Crypto Trading (20%): crypto
+- Professional Tasks (20%): gdpval
 """
 
 from dataclasses import dataclass, field
@@ -162,12 +163,12 @@ class UnifiedScorer:
 
         Args:
             score: Raw score from evaluator
-            dataset_type: Type of dataset (bizfinbench, public_csv, options, synthetic)
+            dataset_type: Type of dataset (bizfinbench, public_csv, gdpval, options, synthetic, crypto)
 
         Returns:
             Normalized score in 0-100 range
         """
-        if dataset_type in ("bizfinbench", "public_csv", "synthetic"):
+        if dataset_type in ("bizfinbench", "public_csv", "synthetic", "gdpval"):
             # These evaluators return 0.0-1.0
             return min(100.0, max(0.0, score * 100.0))
         elif dataset_type in ("options", "crypto"):
